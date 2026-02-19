@@ -1,0 +1,104 @@
+---
+title: Template Project
+description: This is a reference template showing all available content types. Not rendered as a page.
+tagline: Reference for all MDX content types
+animation: tempo
+date: "2024-01-01"
+tags: [template]
+order: 99
+---
+
+{/* ============================================================
+    TEMPLATE: This file is for reference only.
+    Copy it, rename it (without the underscore), and fill in content.
+    All types below are supported.
+    ============================================================ */}
+
+## Heading 2
+### Heading 3
+#### Heading 4
+
+Regular paragraph text. **Bold text.** *Italic text.* `inline code`. [Link text](https://example.com).
+
+---
+
+## Images
+
+Local image (place in same folder as this .mdx file or in public/):
+![Alt text description](./my-image.jpg)
+
+---
+
+## Embedded YouTube Video
+
+<div style="position:relative; padding-bottom:56.25%; height:0; overflow:hidden; border-radius:8px; margin:16px 0;">
+  <iframe
+    src="https://www.youtube.com/embed/VIDEO_ID_HERE"
+    style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;"
+    allowfullscreen
+    loading="lazy"
+  />
+</div>
+
+---
+
+## Local Video File
+
+<video controls style="width:100%; border-radius:8px; margin:16px 0;">
+  <source src="/assets/my-video.mp4" type="video/mp4" />
+</video>
+
+---
+
+## Code Block
+
+```python
+def train(env, policy, episodes=1000):
+    for ep in range(episodes):
+        obs = env.reset()
+        done = False
+        while not done:
+            action = policy(obs)
+            obs, reward, done, _ = env.step(action)
+```
+
+---
+
+## Lists
+
+Unordered:
+- Item one
+- Item two
+  - Nested item
+- Item three
+
+Ordered:
+1. First step
+2. Second step
+3. Third step
+
+---
+
+## Blockquote
+
+> This is a blockquote. Useful for highlighting key findings or quotes from papers.
+
+---
+
+## Side-by-Side Images
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0;">
+  <img src="./image-left.jpg" alt="Left image" style="width:100%; border-radius:6px;" />
+  <img src="./image-right.jpg" alt="Right image" style="width:100%; border-radius:6px;" />
+</div>
+
+---
+
+## Image with Caption
+
+<figure style="margin:16px 0;">
+  <img src="./image.jpg" alt="Description" style="width:100%; border-radius:8px;" />
+  <figcaption style="text-align:center; font-size:12px; color:#8888aa; margin-top:6px;">
+    Caption text here.
+  </figcaption>
+</figure>
