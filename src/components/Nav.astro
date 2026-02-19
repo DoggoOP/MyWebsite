@@ -1,0 +1,81 @@
+---
+interface Props {
+  showBack?: boolean;
+  backHref?: string;
+}
+const { showBack = false, backHref = '/projects' } = Astro.props;
+---
+
+<nav class="nav">
+  <a href="/" class="nav-logo">Ethan Kong</a>
+  <div class="nav-links">
+    {showBack && (
+      <a href={backHref} class="nav-back">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back
+      </a>
+    )}
+    <a href="/projects" class="nav-link">Projects</a>
+    <a href="/assets/resume.pdf" class="nav-link nav-resume" download>Resume</a>
+  </div>
+</nav>
+
+<style>
+  .nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    background: rgba(10, 10, 15, 0.8);
+    border-bottom: 1px solid var(--border-subtle);
+    backdrop-filter: var(--glass-blur);
+  }
+
+  .nav-logo {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    background: var(--gradient-plasma);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .nav-link {
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+  }
+  .nav-link:hover { color: var(--text-primary); }
+
+  .nav-resume {
+    padding: 6px 16px;
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-btn);
+    color: var(--accent-cyan);
+    font-size: 13px;
+    transition: background 0.2s;
+  }
+  .nav-resume:hover { background: rgba(0,212,255,0.08); }
+
+  .nav-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+  }
+  .nav-back:hover { color: var(--accent-cyan); }
+</style>
