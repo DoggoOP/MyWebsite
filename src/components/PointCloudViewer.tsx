@@ -104,7 +104,7 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.autoRotate = true;
-    controls.autoRotateSpeed = 1.5;
+    controls.autoRotateSpeed = 0.25;
     s.controls = controls;
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.8));

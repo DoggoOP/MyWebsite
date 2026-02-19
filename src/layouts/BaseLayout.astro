@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import { ViewTransitions } from 'astro:transitions';
+import { getCollection } from 'astro:content';
 
 interface Props {
   title?: string;
@@ -16,6 +17,9 @@ const {
   backHref = '/projects',
   noNav = false
 } = Astro.props;
+
+const allProjects = await getCollection('projects', ({ id }) => !id.startsWith('_'));
+const projects = allProjects.sort((a, b) => a.data.order - b.data.order);
 ---
 
 <!DOCTYPE html>
@@ -33,37 +37,179 @@ const {
   <body>
     {!noNav && <Nav showBack={showBack} backHref={backHref} />}
     <slot />
+
+    <!-- Projects drawer: available on every page -->
+    <div class="projects-backdrop" id="projects-backdrop"></div>
+    <aside class="projects-overlay" id="projects-overlay" aria-label="Projects">
+      <div class="overlay-header">
+        <h2 class="overlay-title">Projects</h2>
+        <button class="overlay-close" id="close-projects-btn" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <nav class="overlay-list">
+        {projects.map((p) => (
+          <a href={`/projects/${p.slug}`} class="overlay-item">
+            <span class="overlay-num">{String(p.data.order).padStart(2, '0')}</span>
+            <span class="overlay-info">
+              <span class="overlay-name">{p.data.title}</span>
+              <span class="overlay-tagline">{p.data.tagline}</span>
+            </span>
+            <svg class="overlay-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
+        ))}
+      </nav>
+      <a href="/projects" class="overlay-all">
+        Browse all projects
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </aside>
   </body>
-<style is:global>
-  /* Dramatic plasma sweep page transition */
-  @keyframes plasma-sweep-in {
-    from {
-      opacity: 0;
-      transform: translateX(40px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  @keyframes plasma-sweep-out {
-    from {
-      opacity: 1;
-      transform: translateX(0);
-    }
-    to {
-      opacity: 0;
-      transform: translateX(-30px);
-    }
-  }
-
-  ::view-transition-old(root) {
-    animation: 350ms cubic-bezier(0.4, 0, 0.2, 1) plasma-sweep-out;
-  }
-
-  ::view-transition-new(root) {
-    animation: 350ms cubic-bezier(0.4, 0, 0.2, 1) plasma-sweep-in;
-  }
-</style>
 </html>
+
+<style is:global>
+  /* === View transitions === */
+  @keyframes plasma-sweep-in {
+    from { opacity: 0; transform: translateX(40px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes plasma-sweep-out {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(-30px); }
+  }
+  ::view-transition-old(root) { animation: 350ms cubic-bezier(0.4,0,0.2,1) plasma-sweep-out; }
+  ::view-transition-new(root) { animation: 350ms cubic-bezier(0.4,0,0.2,1) plasma-sweep-in; }
+
+  /* === Projects overlay === */
+  .projects-backdrop {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .projects-backdrop.open { opacity: 1; pointer-events: auto; }
+
+  .projects-overlay {
+    position: fixed; top: 0; right: 0; z-index: 201;
+    width: 420px; height: 100vh;
+    background: rgba(8,8,18,0.97);
+    border-left: 1px solid var(--border-subtle);
+    backdrop-filter: blur(20px);
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94);
+    overflow-y: auto;
+  }
+  .projects-overlay.open { transform: translateX(0); }
+
+  .overlay-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+  .overlay-title {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-muted);
+  }
+  .overlay-close {
+    background: none; border: none; color: var(--text-secondary);
+    cursor: pointer; padding: 4px; border-radius: 4px;
+    display: flex; align-items: center;
+    transition: color 0.2s, background 0.2s;
+  }
+  .overlay-close:hover { color: var(--text-primary); background: rgba(255,255,255,0.06); }
+
+  .overlay-list { flex: 1; padding: 8px 0; overflow-y: auto; }
+
+  .overlay-item {
+    display: flex; align-items: center; gap: 16px;
+    padding: 16px 28px;
+    border-left: 3px solid transparent;
+    text-decoration: none;
+    color: var(--text-secondary);
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .overlay-item:hover {
+    background: rgba(0,212,255,0.05);
+    border-left-color: var(--accent-cyan);
+    color: var(--text-primary);
+  }
+
+  .overlay-num {
+    font-size: 11px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted); min-width: 20px;
+    transition: color 0.15s;
+  }
+  .overlay-item:hover .overlay-num { color: var(--accent-cyan); }
+
+  .overlay-info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .overlay-name { font-size: 15px; font-weight: 600; }
+  .overlay-tagline { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+
+  .overlay-arrow { opacity: 0; transition: opacity 0.15s, transform 0.2s; flex-shrink: 0; }
+  .overlay-item:hover .overlay-arrow { opacity: 1; transform: translateX(3px); }
+
+  .overlay-all {
+    display: flex; align-items: center; gap: 8px;
+    padding: 20px 28px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 13px; color: var(--text-muted);
+    text-decoration: none; flex-shrink: 0;
+    transition: color 0.2s;
+  }
+  .overlay-all:hover { color: var(--accent-cyan); }
+</style>
+
+<script>
+  // Re-run on every ViewTransitions page load to re-attach listeners
+  function setupOverlay() {
+    const overlay = document.getElementById('projects-overlay');
+    const backdrop = document.getElementById('projects-backdrop');
+    const closeBtn = document.getElementById('close-projects-btn');
+
+    if (!overlay || !backdrop) return;
+
+    function openOverlay() {
+      overlay.classList.add('open');
+      backdrop.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeOverlay() {
+      overlay.classList.remove('open');
+      backdrop.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // Remove old listeners by cloning and replacing each trigger
+    document.querySelectorAll('[data-open-projects]').forEach(el => {
+      const clone = el.cloneNode(true) as Element;
+      el.parentNode?.replaceChild(clone, el);
+      clone.addEventListener('click', openOverlay);
+    });
+
+    const closeBtnFresh = document.getElementById('close-projects-btn');
+    closeBtnFresh?.addEventListener('click', closeOverlay);
+
+    const backdropFresh = document.getElementById('projects-backdrop');
+    backdropFresh?.addEventListener('click', closeOverlay);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeOverlay();
+    });
+
+    // Close overlay before navigating to new page
+    document.addEventListener('astro:before-preparation', closeOverlay, { once: true });
+  }
+
+  document.addEventListener('astro:page-load', setupOverlay);
+</script>

@@ -17,7 +17,7 @@ const { showBack = false, backHref = '/projects' } = Astro.props;
         Back
       </a>
     )}
-    <a href="/projects" class="nav-link">Projects</a>
+    <button data-open-projects class="nav-link nav-projects-btn">Projects</button>
     <a href="/assets/resume.pdf" class="nav-link nav-resume" download>Resume</a>
   </div>
 </nav>
@@ -58,6 +58,13 @@ const { showBack = false, backHref = '/projects' } = Astro.props;
     transition: color 0.2s;
   }
   .nav-link:hover { color: var(--text-primary); }
+
+  .nav-projects-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+  }
 
   .nav-resume {
     padding: 6px 16px;
