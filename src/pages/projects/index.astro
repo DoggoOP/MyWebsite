@@ -1,0 +1,283 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const allProjects = await getCollection('projects', ({ id }) => !id.startsWith('_'));
+const projects = allProjects.sort((a, b) => a.data.order - b.data.order);
+---
+
+<BaseLayout title="Projects — Ethan Kong">
+  <div class="topo-bg" />
+  <div class="projects-page">
+    <!-- Left sidebar: project list -->
+    <nav class="project-list" aria-label="Projects">
+      <h2 class="list-heading">Projects</h2>
+      {projects.map((p, i) => (
+        <button
+          class="project-item"
+          data-slug={p.slug}
+          data-index={i}
+          aria-expanded="false"
+        >
+          <span class="item-order">{String(p.data.order).padStart(2, '0')}</span>
+          <span class="item-title">{p.data.title}</span>
+          <svg class="item-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+      ))}
+    </nav>
+
+    <!-- Right panel: project preview -->
+    <div class="project-preview" id="preview-panel">
+      <div class="preview-default" id="preview-default">
+        <p class="preview-hint">Select a project to preview</p>
+      </div>
+
+      {projects.map(p => (
+        <div class="preview-card" id={`preview-${p.slug}`} hidden>
+          <canvas class="preview-anim" data-animation={p.data.animation}></canvas>
+          <div class="preview-content">
+            <div class="preview-tags">
+              {p.data.tags.slice(0, 4).map(tag => (
+                <span class="tag">{tag}</span>
+              ))}
+            </div>
+            <h2 class="preview-title">{p.data.title}</h2>
+            <p class="preview-desc">{p.data.description}</p>
+            <a href={`/projects/${p.slug}`} class="preview-cta">
+              View Project
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .projects-page {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    height: 100vh;
+    padding-top: 56px;
+  }
+
+  .project-list {
+    flex: 0 0 300px;
+    border-right: 1px solid var(--border-subtle);
+    overflow-y: auto;
+    padding: 32px 0;
+    background: rgba(10,10,15,0.6);
+    backdrop-filter: var(--glass-blur);
+  }
+
+  .list-heading {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0 24px 20px;
+  }
+
+  .project-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 24px;
+    background: none;
+    border: none;
+    border-left: 3px solid transparent;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    color: var(--text-secondary);
+  }
+
+  .project-item:hover {
+    background: rgba(0,212,255,0.04);
+    color: var(--text-primary);
+  }
+
+  .project-item.active {
+    border-left-color: var(--accent-cyan);
+    background: rgba(0,212,255,0.06);
+    color: var(--text-primary);
+  }
+
+  .item-order {
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+    min-width: 24px;
+  }
+
+  .project-item.active .item-order { color: var(--accent-cyan); }
+
+  .item-title {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .item-arrow {
+    opacity: 0;
+    transition: opacity 0.15s, transform 0.2s;
+  }
+  .project-item:hover .item-arrow,
+  .project-item.active .item-arrow { opacity: 1; }
+  .project-item.active .item-arrow { color: var(--accent-cyan); }
+
+  .project-preview {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .preview-default {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .preview-hint {
+    font-size: 14px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  .preview-card {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    animation: slideIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .preview-anim {
+    width: 100%;
+    height: 55%;
+    display: block;
+    background: #050508;
+  }
+
+  .preview-content {
+    flex: 1;
+    padding: 32px 48px;
+    background: linear-gradient(to bottom, rgba(10,10,18,0.95), var(--bg-base));
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .preview-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 100px;
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.2);
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .preview-title {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: var(--gradient-plasma);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .preview-desc {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 520px;
+  }
+
+  .preview-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(123,47,247,0.12));
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-btn);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent-cyan);
+    align-self: flex-start;
+    transition: background 0.2s, transform 0.15s;
+    margin-top: 8px;
+  }
+  .preview-cta:hover {
+    background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(123,47,247,0.2));
+    transform: translateX(2px);
+  }
+</style>
+
+<script>
+  import { initHeroAnimation } from '../../scripts/heroAnimations.js';
+
+  const items = document.querySelectorAll<HTMLButtonElement>('.project-item');
+  let activeSlug: string | null = null;
+
+  items.forEach(item => {
+    item.addEventListener('click', () => {
+      const slug = item.dataset.slug!;
+      if (slug === activeSlug) return;
+
+      items.forEach(i => {
+        i.classList.remove('active');
+        i.setAttribute('aria-expanded', 'false');
+      });
+
+      const prevCard = activeSlug ? document.getElementById(`preview-${activeSlug}`) : null;
+      if (prevCard) prevCard.hidden = true;
+
+      item.classList.add('active');
+      item.setAttribute('aria-expanded', 'true');
+      activeSlug = slug;
+
+      const card = document.getElementById(`preview-${slug}`);
+      const defaultMsg = document.getElementById('preview-default');
+      if (defaultMsg) defaultMsg.style.display = 'none';
+
+      if (card) {
+        card.hidden = false;
+        const canvas = card.querySelector<HTMLCanvasElement>('.preview-anim');
+        if (canvas && canvas.dataset.animation && !canvas.dataset.initialized) {
+          canvas.dataset.initialized = 'true';
+          initHeroAnimation(canvas.dataset.animation, canvas);
+        }
+      }
+    });
+  });
+
+  // Auto-select first project on load
+  if (items.length > 0) items[0].click();
+</script>
