@@ -1,0 +1,88 @@
+/* === Plasma Design System === */
+:root {
+  --bg-base: #0a0a0f;
+  --bg-surface: rgba(14, 14, 22, 0.85);
+  --bg-card: rgba(18, 18, 30, 0.8);
+
+  --accent-cyan: #00d4ff;
+  --accent-violet: #7b2ff7;
+  --accent-green: #00ffaa;
+
+  /* Gradient used for name, highlights */
+  --gradient-plasma: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 100%);
+
+  --text-primary: #e1e1f0;
+  --text-secondary: #8888aa;
+  --text-muted: #55556a;
+
+  --border-subtle: rgba(120, 140, 200, 0.15);
+  --border-accent: rgba(0, 212, 255, 0.3);
+
+  --glass-blur: blur(14px);
+  --radius-card: 14px;
+  --radius-btn: 7px;
+
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--accent-violet); border-radius: 3px; }
+
+/* Plasma gradient text utility */
+.gradient-text {
+  background: var(--gradient-plasma);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass card utility */
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  backdrop-filter: var(--glass-blur);
+}
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+/* Topographic background pattern (used on landing) */
+.topo-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: var(--bg-base);
+  background-image:
+    repeating-radial-gradient(ellipse at 20% 40%, transparent 0px, transparent 40px, rgba(0,212,255,0.03) 41px),
+    repeating-radial-gradient(ellipse at 80% 60%, transparent 0px, transparent 60px, rgba(123,47,247,0.03) 61px),
+    repeating-radial-gradient(ellipse at 50% 50%, transparent 0px, transparent 80px, rgba(0,255,170,0.02) 81px);
+  animation: topo-drift 20s ease-in-out infinite alternate;
+}
+
+@keyframes topo-drift {
+  from { background-position: 0% 0%, 100% 100%, 50% 50%; }
+  to   { background-position: 5% 8%, 95% 92%, 52% 48%; }
+}
