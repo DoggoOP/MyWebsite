@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
+import { ViewTransitions } from 'astro:transitions';
 
 interface Props {
   title?: string;
@@ -27,9 +28,42 @@ const {
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <ViewTransitions />
   </head>
   <body>
     {!noNav && <Nav showBack={showBack} backHref={backHref} />}
     <slot />
   </body>
+<style is:global>
+  /* Dramatic plasma sweep page transition */
+  @keyframes plasma-sweep-in {
+    from {
+      opacity: 0;
+      transform: translateX(40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes plasma-sweep-out {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-30px);
+    }
+  }
+
+  ::view-transition-old(root) {
+    animation: 350ms cubic-bezier(0.4, 0, 0.2, 1) plasma-sweep-out;
+  }
+
+  ::view-transition-new(root) {
+    animation: 350ms cubic-bezier(0.4, 0, 0.2, 1) plasma-sweep-in;
+  }
+</style>
 </html>

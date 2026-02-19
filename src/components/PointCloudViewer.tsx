@@ -138,7 +138,7 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
         geo.setAttribute('color', new THREE.BufferAttribute(data.colors, 3));
-        const mat = new THREE.PointsMaterial({ size: 2, vertexColors: true, sizeAttenuation: true });
+        const mat = new THREE.PointsMaterial({ size: 1.5, vertexColors: true, sizeAttenuation: false });
         s.material = mat;
         const pc = new THREE.Points(geo, mat);
         scene.add(pc);
@@ -260,7 +260,7 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
       </div>
       <div ref={uiRef} className="pcv-controls" style={{ display: 'none' }}>
         <label className="pcv-label">Point Size</label>
-        <input type="range" min="0.5" max="8" step="0.5" defaultValue="2" onChange={handlePointSize} className="pcv-slider" />
+        <input type="range" min="0.5" max="4" step="0.5" defaultValue="1.5" onChange={handlePointSize} className="pcv-slider" />
         <button onClick={handleBgToggle} ref={bgBtnRef} className="pcv-btn">Dark</button>
         <button onClick={handleReset} className="pcv-btn">Reset</button>
         <button onClick={handleAutoRotate} ref={autoRotateBtnRef} className="pcv-btn">Auto-Rotate: ON</button>

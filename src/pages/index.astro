@@ -1,6 +1,10 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PointCloudViewer from '../components/PointCloudViewer.tsx';
+import { getCollection } from 'astro:content';
+
+const allProjects = await getCollection('projects', ({ id }) => !id.startsWith('_'));
+const projects = allProjects.sort((a, b) => a.data.order - b.data.order);
 ---
 
 <BaseLayout title="Ethan Kong">
@@ -61,15 +65,52 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
           </a>
         </div>
 
-        <a href="/projects" class="bio-projects-link">
+        <button class="bio-projects-link" id="open-projects-btn">
           View Projects
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M5 12h14M12 5l7 7-7 7"/>
           </svg>
-        </a>
+        </button>
       </div>
     </section>
   </main>
+
+  <!-- Backdrop -->
+  <div class="projects-backdrop" id="projects-backdrop"></div>
+
+  <!-- Projects overlay panel -->
+  <aside class="projects-overlay" id="projects-overlay" aria-label="Projects">
+    <div class="overlay-header">
+      <h2 class="overlay-title">Projects</h2>
+      <button class="overlay-close" id="close-projects-btn" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <nav class="overlay-list">
+      {projects.map((p) => (
+        <a href={`/projects/${p.slug}`} class="overlay-item">
+          <span class="overlay-num">{String(p.data.order).padStart(2, '0')}</span>
+          <span class="overlay-info">
+            <span class="overlay-name">{p.data.title}</span>
+            <span class="overlay-tagline">{p.data.tagline}</span>
+          </span>
+          <svg class="overlay-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      ))}
+    </nav>
+
+    <a href="/projects" class="overlay-all">
+      Browse all projects
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+      </svg>
+    </a>
+  </aside>
 </BaseLayout>
 
 <style>
@@ -151,10 +192,184 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     font-weight: 600;
     color: var(--accent-cyan);
     align-self: flex-start;
+    cursor: pointer;
     transition: background 0.2s, transform 0.2s;
   }
   .bio-projects-link:hover {
     background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(123,47,247,0.2));
     transform: translateX(2px);
   }
+
+  /* === Backdrop === */
+  .projects-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .projects-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* === Overlay panel === */
+  .projects-overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 201;
+    width: 420px;
+    height: 100vh;
+    background: rgba(10, 10, 18, 0.97);
+    border-left: 1px solid var(--border-subtle);
+    backdrop-filter: blur(20px);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    overflow-y: auto;
+  }
+  .projects-overlay.open {
+    transform: translateX(0);
+  }
+
+  .overlay-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+
+  .overlay-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .overlay-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.2s, background 0.2s;
+    display: flex;
+    align-items: center;
+  }
+  .overlay-close:hover {
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.06);
+  }
+
+  .overlay-list {
+    flex: 1;
+    padding: 16px 0;
+    overflow-y: auto;
+  }
+
+  .overlay-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 28px;
+    border-left: 3px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+    color: var(--text-secondary);
+    text-decoration: none;
+  }
+  .overlay-item:hover {
+    background: rgba(0,212,255,0.05);
+    border-left-color: var(--accent-cyan);
+    color: var(--text-primary);
+  }
+
+  .overlay-num {
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+    min-width: 20px;
+    transition: color 0.15s;
+  }
+  .overlay-item:hover .overlay-num { color: var(--accent-cyan); }
+
+  .overlay-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .overlay-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: inherit;
+  }
+
+  .overlay-tagline {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  .overlay-arrow {
+    opacity: 0;
+    transition: opacity 0.15s, transform 0.2s;
+    flex-shrink: 0;
+  }
+  .overlay-item:hover .overlay-arrow {
+    opacity: 1;
+    transform: translateX(3px);
+  }
+
+  .overlay-all {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 28px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: color 0.2s;
+  }
+  .overlay-all:hover { color: var(--accent-cyan); }
 </style>
+
+<script>
+  const openBtn = document.getElementById('open-projects-btn');
+  const closeBtn = document.getElementById('close-projects-btn');
+  const overlay = document.getElementById('projects-overlay');
+  const backdrop = document.getElementById('projects-backdrop');
+
+  function openOverlay() {
+    overlay?.classList.add('open');
+    backdrop?.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeOverlay() {
+    overlay?.classList.remove('open');
+    backdrop?.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  openBtn?.addEventListener('click', openOverlay);
+  closeBtn?.addEventListener('click', closeOverlay);
+  backdrop?.addEventListener('click', closeOverlay);
+
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeOverlay();
+  });
+</script>

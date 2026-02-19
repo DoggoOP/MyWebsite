@@ -269,10 +269,16 @@ const projects = allProjects.sort((a, b) => a.data.order - b.data.order);
 
       if (card) {
         card.hidden = false;
+        // Init animation on canvas if not already started
+        // Use requestAnimationFrame so the card has layout before we read canvas dimensions
         const canvas = card.querySelector<HTMLCanvasElement>('.preview-anim');
         if (canvas && canvas.dataset.animation && !canvas.dataset.initialized) {
           canvas.dataset.initialized = 'true';
-          initHeroAnimation(canvas.dataset.animation, canvas);
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              initHeroAnimation(canvas.dataset.animation!, canvas);
+            });
+          });
         }
       }
     });
