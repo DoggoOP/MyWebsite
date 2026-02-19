@@ -1,0 +1,238 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  tags?: string[];
+  date?: string;
+  links?: { github?: string; paper?: string; demo?: string; };
+  animation: string;
+}
+
+const { title, description, tags = [], date, links, animation } = Astro.props;
+---
+
+<BaseLayout title={`${title} — Ethan Kong`} showBack={true}>
+  <div class="project-hero" data-animation={animation}>
+    <canvas id="hero-canvas" class="hero-canvas"></canvas>
+    <div class="hero-overlay">
+      <div class="hero-content">
+        <div class="hero-tags">
+          {tags.map(tag => <span class="tag">{tag}</span>)}
+        </div>
+        <h1 class="hero-title">{title}</h1>
+        <p class="hero-desc">{description}</p>
+        <div class="hero-links">
+          {links?.github && (
+            <a href={links.github} target="_blank" class="hero-link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+              </svg>
+              GitHub
+            </a>
+          )}
+          {links?.paper && links.paper !== "" && (
+            <a href={links.paper} target="_blank" class="hero-link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14,2 14,8 20,8"/>
+              </svg>
+              Paper
+            </a>
+          )}
+          {links?.demo && (
+            <a href={links.demo} target="_blank" class="hero-link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><polygon points="10,8 16,12 10,16"/>
+              </svg>
+              Demo
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <article class="project-content">
+    <slot />
+  </article>
+</BaseLayout>
+
+<style>
+  .project-hero {
+    position: relative;
+    width: 100%;
+    height: 420px;
+    margin-top: 56px;
+    overflow: hidden;
+    background: #050508;
+  }
+
+  .hero-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, rgba(10,10,15,0.85) 40%, transparent);
+    display: flex;
+    align-items: center;
+  }
+
+  .hero-content {
+    padding: 48px 64px;
+    max-width: 600px;
+  }
+
+  .hero-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .tag {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 100px;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.25);
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .hero-title {
+    font-size: 48px;
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    margin-bottom: 12px;
+    background: var(--gradient-plasma);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-desc {
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+
+  .hero-links {
+    display: flex;
+    gap: 12px;
+  }
+
+  .hero-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-btn);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: background 0.2s;
+  }
+  .hero-link:hover { background: rgba(0,212,255,0.1); }
+
+  .project-content {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 60px 32px 120px;
+    line-height: 1.75;
+    font-size: 16px;
+    color: var(--text-secondary);
+  }
+
+  .project-content :global(h2) {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 48px 0 16px;
+    letter-spacing: -0.02em;
+  }
+  .project-content :global(h3) {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 32px 0 12px;
+  }
+  .project-content :global(h4) {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 24px 0 8px;
+  }
+  .project-content :global(p) { margin: 12px 0; }
+  .project-content :global(ul), .project-content :global(ol) {
+    padding-left: 24px;
+    margin: 12px 0;
+  }
+  .project-content :global(li) { margin: 6px 0; }
+  .project-content :global(blockquote) {
+    border-left: 3px solid var(--accent-cyan);
+    padding-left: 20px;
+    margin: 20px 0;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+  .project-content :global(code) {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: rgba(255,255,255,0.06);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--accent-cyan);
+  }
+  .project-content :global(pre) {
+    background: rgba(14,14,22,0.9);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 20px;
+    overflow-x: auto;
+    margin: 20px 0;
+  }
+  .project-content :global(pre code) {
+    background: none;
+    padding: 0;
+    color: var(--text-primary);
+  }
+  .project-content :global(img) {
+    width: 100%;
+    border-radius: 8px;
+    margin: 16px 0;
+  }
+  .project-content :global(iframe) {
+    border-radius: 8px;
+    margin: 16px 0;
+  }
+  .project-content :global(hr) {
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    margin: 40px 0;
+  }
+  .project-content :global(a) {
+    color: var(--accent-cyan);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+</style>
+
+<script>
+  import { initHeroAnimation } from '../scripts/heroAnimations.js';
+  const hero = document.querySelector('[data-animation]') as HTMLElement | null;
+  const canvas = document.getElementById('hero-canvas') as HTMLCanvasElement | null;
+  if (hero && canvas) {
+    initHeroAnimation(hero.dataset.animation!, canvas);
+  }
+</script>
