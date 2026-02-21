@@ -71,7 +71,7 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
     scene?: THREE.Scene;
     camera?: THREE.PerspectiveCamera;
     darkBg: boolean;
-  }>({ darkBg: true });
+  }>({ darkBg: false });
 
   const statVertsRef = useRef<HTMLSpanElement>(null);
   const statAnnotsRef = useRef<HTMLSpanElement>(null);
@@ -87,14 +87,14 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
     const s = stateRef.current;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a0f);
+    scene.background = null; // transparent — fluid canvas shows through
     s.scene = scene;
 
     const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.01, 100);
     camera.position.set(0, 1, 3);
     s.camera = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
@@ -135,10 +135,39 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
         byteLength = byteLength || buffer.byteLength;
         const data = parseLssnap(buffer);
 
+        // ── Filter to right-side person (highlighted quadrant) ──────────────
+        const tmpGeo = new THREE.BufferGeometry();
+        tmpGeo.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
+        tmpGeo.computeBoundingBox();
+        const fullBox = tmpGeo.boundingBox!;
+        const fullCenter = new THREE.Vector3();
+        fullBox.getCenter(fullCenter);
+        const fullSize = new THREE.Vector3();
+        fullBox.getSize(fullSize);
+
+        // right 50%: x >= center_x
+        // back 55%:  z >= min_z + 45% of z-range
+        // bottom 70%: y <= min_y + 70% of y-range
+        const xCut = fullCenter.x;
+        const zCut = fullBox.min.z + fullSize.z * 0.75;
+        const yCutMax = fullBox.min.y + fullSize.y * 0.45;
+        const filtPos: number[] = [], filtCol: number[] = [];
+        for (let vi = 0; vi < data.vertexCount; vi++) {
+          const x = data.positions[vi*3];
+          const y = data.positions[vi*3+1];
+          const z = data.positions[vi*3+2];
+          if (x >= xCut && z <= zCut && y >= yCutMax) {
+            filtPos.push(x, y, z);
+            filtCol.push(data.colors[vi*3], data.colors[vi*3+1], data.colors[vi*3+2]);
+          }
+        }
+        const filtPositions = new Float32Array(filtPos);
+        const filtColors    = new Float32Array(filtCol);
+
         const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
-        geo.setAttribute('color', new THREE.BufferAttribute(data.colors, 3));
-        const mat = new THREE.PointsMaterial({ size: 1.5, vertexColors: true, sizeAttenuation: false });
+        geo.setAttribute('position', new THREE.BufferAttribute(filtPositions, 3));
+        geo.setAttribute('color',    new THREE.BufferAttribute(filtColors, 3));
+        const mat = new THREE.PointsMaterial({ size: 3, vertexColors: true, sizeAttenuation: false });
         s.material = mat;
         const pc = new THREE.Points(geo, mat);
         scene.add(pc);
@@ -151,7 +180,8 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
         box.getSize(size);
         const maxDim = Math.max(size.x, size.y, size.z);
         controls.target.copy(center);
-        camera.position.set(center.x, center.y + maxDim * 0.3, center.z + maxDim * 1.2);
+        // Slightly elevated, frontal — farther back so model fits the card height
+        camera.position.set(center.x - maxDim * 0.1, center.y + maxDim * 0.25, center.z + maxDim * 1.6);
         camera.lookAt(center);
         controls.update();
         s.initialPos = camera.position.clone();
@@ -223,8 +253,8 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
   const handleBgToggle = () => {
     const s = stateRef.current;
     s.darkBg = !s.darkBg;
-    if (s.scene) s.scene.background = new THREE.Color(s.darkBg ? 0x0a0a0f : 0xf0f0f0);
-    if (bgBtnRef.current) bgBtnRef.current.textContent = s.darkBg ? 'Dark' : 'Light';
+    if (s.scene) s.scene.background = s.darkBg ? new THREE.Color(0x0a0a0f) : null;
+    if (bgBtnRef.current) bgBtnRef.current.textContent = s.darkBg ? 'Clear' : 'Dark';
   };
 
   const handleReset = () => {
@@ -260,8 +290,8 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
       </div>
       <div ref={uiRef} className="pcv-controls" style={{ display: 'none' }}>
         <label className="pcv-label">Point Size</label>
-        <input type="range" min="0.5" max="4" step="0.5" defaultValue="1.5" onChange={handlePointSize} className="pcv-slider" />
-        <button onClick={handleBgToggle} ref={bgBtnRef} className="pcv-btn">Dark</button>
+        <input type="range" min="1" max="5" step="0.5" defaultValue="3" onChange={handlePointSize} className="pcv-slider" />
+        <button onClick={handleBgToggle} ref={bgBtnRef} className="pcv-btn">Dark Bg</button>
         <button onClick={handleReset} className="pcv-btn">Reset</button>
         <button onClick={handleAutoRotate} ref={autoRotateBtnRef} className="pcv-btn">Auto-Rotate: ON</button>
       </div>

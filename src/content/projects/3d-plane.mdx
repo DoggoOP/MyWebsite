@@ -1,13 +1,32 @@
 ---
 title: 3D Printed Plane
-description: Designing, 3D printing, and flying a custom RC aircraft with iterative aerodynamic refinements.
-tagline: Design, print, fly
+description: Designed and 3D-printed a 1.8 m fixed-wing UAV in Fusion 360, integrated INAV autopilot with PID tuning and LoRa telemetry for autonomous waypoint flight and data logging.
+tagline: Design, print, fly — 1.8 m autonomous UAV
 animation: 3d-plane
-date: "2023-05-01"
-tags: [3d-printing, cad, aerodynamics, rc]
+date: "2023-06-01"
+tags: [3d-printing, cad, uav, inav, fusion360, aerodynamics, rc]
 order: 5
 ---
 
 ## Overview
 
-[Add content here]
+This project is a fully custom 1.8-metre fixed-wing UAV — designed from scratch in Fusion 360, aerodynamically evaluated in Autodesk CFD, and 3D-printed across multiple print sessions. The goal was to build a capable autonomous platform using accessible fabrication methods, demonstrating that a flight-worthy UAV with autopilot, telemetry, and waypoint navigation can be produced entirely from desktop tools and a consumer FDM printer.
+
+## Design & CFD
+
+The airframe was designed in **Fusion 360** with a focus on printability: each section is sized to fit a standard print bed, with alignment pins and bonded joints at the wing-fuselage and tail interfaces. Wing geometry was iterated in **Autodesk CFD** to evaluate lift-to-drag ratio and stall characteristics across the expected speed range, informing the final airfoil selection and wing incidence angle.
+
+Structural considerations drove wall thicknesses, infill patterns, and spar routing — the main wing spar is a carbon rod bonded into printed spar tubes in each wing panel.
+
+## Avionics & Autopilot
+
+The flight stack is built around **INAV** (open-source navigation firmware for STM32-based flight controllers):
+
+- **PID tuning** — manual stick inputs used to identify and correct oscillations in roll, pitch, and yaw axes; iterative in-field tuning
+- **Waypoint navigation** — INAV's mission planner used to define GPS waypoints; the aircraft flies the mission autonomously after hand launch
+- **LoRa telemetry** — long-range telemetry link streams flight data (GPS position, altitude, airspeed, battery voltage) to a ground station for real-time monitoring and data logging
+- **OSD** — on-screen display overlays key flight parameters on the FPV video feed
+
+## Flights
+
+The aircraft has completed multiple autonomous waypoint missions and manual FPV flights. Logged telemetry data has been used to refine the PID gains and validate cruise performance against CFD predictions.

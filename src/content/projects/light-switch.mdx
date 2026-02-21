@@ -1,13 +1,31 @@
 ---
 title: Automated Light Switch
-description: A retrofittable motorized light switch actuator controlled via phone, voice, and schedules.
-tagline: Retrofit any light switch automatically
+description: A 3D-printed motorized actuator that clips onto any standard light switch and connects it to phone, voice, and schedule control — no wiring required.
+tagline: Retrofit any light switch, no wiring required
 animation: light-switch
 date: "2022-12-01"
-tags: [hardware, iot, embedded, 3d-printing]
+tags: [hardware, iot, embedded, 3d-printing, arduino]
 order: 7
 ---
 
 ## Overview
 
-[Add content here]
+Automated Light Switch is a retrofit smart home device designed around a single constraint: work with any existing light switch without touching the wall wiring. The actuator clips onto a standard rocker or toggle switch, physically flips it with a small servo, and receives commands over Wi-Fi — making any switch controllable from a phone, a voice assistant, or an automated schedule.
+
+## Mechanical Design
+
+The housing was designed in CAD and 3D-printed in PLA. A tension-clip mechanism grips the switch plate without adhesives or screws, making installation and removal tool-free. A micro servo mounted inside the housing drives a small arm that presses against the switch rocker — the geometry was iterated to handle the range of switch heights and travel distances found on standard residential plates.
+
+## Electronics & Firmware
+
+The controller is an ESP8266-based module running custom Arduino firmware. On startup it connects to the local Wi-Fi network and registers with a lightweight MQTT broker running on a home server. The firmware exposes three control modes:
+
+- **Phone app** — a simple iOS shortcut sends MQTT payloads to toggle or set the switch state
+- **Voice** — Siri shortcuts relay commands to the same MQTT topic
+- **Schedules** — on-device cron-style rules (e.g., turn off at midnight) execute without requiring a phone to be present
+
+State is persisted in EEPROM so the device remembers the last known switch position across power cycles.
+
+## Outcome
+
+The device has been running continuously for over a year on a single USB power supply, with no wall modifications. The clip-on design means it can be moved between switches in seconds.

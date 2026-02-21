@@ -1,13 +1,36 @@
 ---
 title: Polymarket Trader Bot
-description: An automated trading bot for Polymarket prediction markets using sentiment analysis and historical data.
-tagline: Automated prediction market trading
+description: Autonomous trading system for weekly Polymarket prediction markets — multi-source data ingestion, Monte Carlo hedge sizing, Kelly criterion position management, and a live Next.js dashboard.
+tagline: Autonomous prediction market trading
 animation: polymarket
-date: "2024-10-01"
-tags: [python, trading, ml, web3]
+date: "2025-10-01"
+tags: [python, fastapi, nextjs, sqlite, trading, railway]
 order: 9
+links:
+  github: https://github.com/DoggoOP/PolyMarketBot
 ---
 
 ## Overview
 
-[Add content here]
+This bot autonomously trades weekly Polymarket prediction markets — starting with markets on weekly Musk tweet counts. It handles the full pipeline from data ingestion through trade execution, running on a scheduled Railway deployment with a live Next.js dashboard for monitoring positions and trade history.
+
+## Data Ingestion
+
+The ingestion layer pulls from multiple sources with fallback chains to handle API outages. For tweet-count markets, sources include direct API calls, third-party aggregators, and scraped fallbacks. Raw counts are normalized against a weekly-reset baseline so the model always operates on comparable quantities across different weeks.
+
+All ingested data and derived signals are persisted in **SQLite with WAL mode** for concurrent read access from the dashboard without blocking the trading loop.
+
+## Forecast & Risk Engine
+
+**Distribution model:** The forecast blends a base distribution (fitted from historical weekly tweet counts) with real-time signal updates. A Monte Carlo simulation draws samples from the blended distribution and maps them to market outcome probabilities.
+
+**Position sizing:** Kelly criterion with a fractional cap determines stake sizes. The Monte Carlo hedge layer identifies correlated outcomes and sizes offsetting positions to reduce variance without giving up expected value.
+
+**Execution:** Orders are placed as GTD limits via the Polymarket CLOB API. The bot monitors open orders and applies ordered exits (take-profit → expiry) for each position.
+
+## Infrastructure
+
+- **FastAPI** backend handles scheduling, strategy execution, and serves the dashboard API
+- **APScheduler** triggers the ingestion and trading loop on a weekly cadence aligned to market resolution times
+- **Next.js** dashboard shows live positions, historical trades, P&L curve, and current forecast distribution
+- **Railway** provides continuous deployment via GitHub Actions with environment variable injection for API keys

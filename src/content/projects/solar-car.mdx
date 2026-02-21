@@ -1,13 +1,32 @@
 ---
 title: Solar Car
-description: Engineering work on the UC Berkeley Solar Vehicle Team's race car for the American Solar Challenge.
-tagline: Solar vehicle engineering
+description: Aerodynamics engineering on the Stanford Solar Car Project — built a Railway-hosted Luminary Cloud CFD pipeline and designed a retractable twin-skin sail concept for crosswind power reduction.
+tagline: Aerodynamics engineering — Stanford Solar Car Project
 animation: solar-car
-date: "2023-09-01"
-tags: [electrical, embedded, solar, team]
+date: "2025-09-01"
+tags: [cfd, aerodynamics, python, cloud, automation, solar, team]
 order: 4
+links:
+  github: https://github.com/DoggoOP/SolarCarLuminaryAutoCFD
 ---
 
 ## Overview
 
-[Add content here]
+As Aerodynamics Engineer on the Stanford Solar Car Project, I work on reducing the drag and improving the crosswind handling of the team's American Solar Challenge race car. The core of my contribution is a cloud CFD automation pipeline that makes it fast and repeatable to evaluate aerodynamic geometry changes — replacing one-off manual solver runs with a standardized, logged workflow.
+
+## Luminary Cloud CFD Pipeline
+
+I built and deployed a web application on Railway that accepts a STEP file upload and automatically runs a standardized CFD analysis on [Luminary Cloud](https://luminarcloud.com/). Results — drag coefficient, lift, pressure distributions — are automatically logged to Google Sheets via the Google Cloud APIs, creating a persistent record of every run for easy comparison across design iterations.
+
+This pipeline cuts the time from geometry change to results from hours of manual setup to a single file upload, and makes it accessible to the whole team without requiring individual CFD software licenses.
+
+**GitHub:** [SolarCarLuminaryAutoCFD](https://github.com/DoggoOP/SolarCarLuminaryAutoCFD)
+
+## Retractable Twin-Skin Sail Concept
+
+In parallel, I modeled and prototyped a **retractable twin-skin sail** concept for the car's dorsal surface. The sail deploys a cambered airfoil profile when crosswinds are favorable, generating a side-force component that partially offsets the power cost of steering correction — reducing net crosswind power consumption. The sail retracts flush when not beneficial (e.g., headwind or tailwind conditions), preserving the car's baseline drag polar.
+
+The concept involved:
+- Parametric aerosurface geometry in CAD
+- CFD evaluation of sail camber and angle-of-attack sweep across crosswind angles
+- Active control architecture for deploy/retract and trim angle based on real-time wind sensor input

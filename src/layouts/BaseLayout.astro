@@ -170,46 +170,34 @@ const projects = allProjects.sort((a, b) => a.data.order - b.data.order);
 </style>
 
 <script>
-  // Re-run on every ViewTransitions page load to re-attach listeners
-  function setupOverlay() {
-    const overlay = document.getElementById('projects-overlay');
-    const backdrop = document.getElementById('projects-backdrop');
-    const closeBtn = document.getElementById('close-projects-btn');
-
-    if (!overlay || !backdrop) return;
-
-    function openOverlay() {
-      overlay.classList.add('open');
-      backdrop.classList.add('open');
-      document.body.style.overflow = 'hidden';
-    }
-
-    function closeOverlay() {
-      overlay.classList.remove('open');
-      backdrop.classList.remove('open');
-      document.body.style.overflow = '';
-    }
-
-    // Remove old listeners by cloning and replacing each trigger
-    document.querySelectorAll('[data-open-projects]').forEach(el => {
-      const clone = el.cloneNode(true) as Element;
-      el.parentNode?.replaceChild(clone, el);
-      clone.addEventListener('click', openOverlay);
-    });
-
-    const closeBtnFresh = document.getElementById('close-projects-btn');
-    closeBtnFresh?.addEventListener('click', closeOverlay);
-
-    const backdropFresh = document.getElementById('projects-backdrop');
-    backdropFresh?.addEventListener('click', closeOverlay);
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeOverlay();
-    });
-
-    // Close overlay before navigating to new page
-    document.addEventListener('astro:before-preparation', closeOverlay, { once: true });
+  function openOverlay() {
+    document.getElementById('projects-overlay')?.classList.add('open');
+    document.getElementById('projects-backdrop')?.classList.add('open');
+    document.body.style.overflow = 'hidden';
   }
 
-  document.addEventListener('astro:page-load', setupOverlay);
+  function closeOverlay() {
+    document.getElementById('projects-overlay')?.classList.remove('open');
+    document.getElementById('projects-backdrop')?.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  // Use window flag so listeners are only attached once across ViewTransitions
+  if (!(window as any).__overlayReady) {
+    (window as any).__overlayReady = true;
+
+    document.addEventListener('click', (e: MouseEvent) => {
+      const t = e.target as Element | null;
+      if (!t) return;
+      if (t.closest('[data-open-projects]')) { openOverlay(); return; }
+      if (t.closest('#close-projects-btn') || (t as HTMLElement).id === 'projects-backdrop') closeOverlay();
+    });
+
+    document.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeOverlay();
+    });
+  }
+
+  // Close overlay before each navigation (register fresh each page load)
+  document.addEventListener('astro:before-preparation', closeOverlay, { once: true });
 </script>

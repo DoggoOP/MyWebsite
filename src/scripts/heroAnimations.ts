@@ -1,6 +1,8 @@
-export function initHeroAnimation(type: string, canvas: HTMLCanvasElement) {
+export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () => void {
   const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+  if (!ctx) return () => {};
+
+  let _rafId = -1;
 
   const resize = () => {
     canvas.width = canvas.offsetWidth * window.devicePixelRatio;
@@ -28,6 +30,11 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement) {
   const animator = animators[type];
   if (animator) animator();
 
+  return () => {
+    cancelAnimationFrame(_rafId);
+    window.removeEventListener('resize', resize);
+  };
+
   function animateTempo() {
     const particles = Array.from({ length: 600 }, () => ({
       x: Math.random() * W(), y: Math.random() * H(), z: Math.random(),
@@ -52,7 +59,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement) {
         ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${alpha})`;
         ctx.fillRect(p.x, p.y, size, size);
       }
-      requestAnimationFrame(draw);
+      _rafId = requestAnimationFrame(draw);
     };
     draw();
   }
@@ -93,7 +100,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement) {
         ctx.fill();
       }
       ctx.shadowBlur = 0;
-      requestAnimationFrame(draw);
+      _rafId = requestAnimationFrame(draw);
     };
     draw();
   }
@@ -125,7 +132,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement) {
         ctx.lineWidth = 1;
         ctx.stroke();
       }
-      requestAnimationFrame(draw);
+      _rafId = requestAnimationFrame(draw);
     };
     draw();
   }
@@ -171,7 +178,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement) {
       drawCar(carX, carY);
       carX += 1.2;
       if (carX > W() + 200) carX = -200;
-      requestAnimationFrame(draw);
+      _rafId = requestAnimationFrame(draw);
     };
     draw();
   }
@@ -223,7 +230,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement) {
       drawPlane(planeX, planeY, tilt);
       planeX += 1.5;
       if (planeX > W() + 150) planeX = -150;
-      requestAnimationFrame(draw);
+      _rafId = requestAnimationFrame(draw);
     };
     draw();
   }
@@ -276,7 +283,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement) {
         ctx.fillStyle = 'rgba(123,47,247,0.7)';
         ctx.beginPath(); ctx.arc(wp.x, wp.y, 5, 0, Math.PI * 2); ctx.fill();
       }
-      requestAnimationFrame(draw);
+      _rafId = requestAnimationFrame(draw);
     };
     draw();
   }
@@ -318,7 +325,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement) {
         ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
       }
-      requestAnimationFrame(draw);
+      _rafId = requestAnimationFrame(draw);
     };
     draw();
   }
@@ -363,7 +370,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement) {
       if (rocketY < -100) { rocketY = H() + 80; vy = -1; }
       drawExhaust(rx, rocketY + 10);
       drawRocket(rx, rocketY);
-      requestAnimationFrame(draw);
+      _rafId = requestAnimationFrame(draw);
     };
     draw();
   }
@@ -418,7 +425,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement) {
       ctx.fillStyle = 'rgba(0,212,255,0.9)';
       ctx.font = '12px monospace';
       ctx.fillText(price.toFixed(3), W() - 55, py - 5);
-      requestAnimationFrame(draw);
+      _rafId = requestAnimationFrame(draw);
     };
     draw();
   }

@@ -1,23 +1,32 @@
 ---
 title: Ion Thruster Optimization
-description: Published research on optimizing ion thruster performance using machine learning-assisted parameter search.
-tagline: ML-assisted thruster optimization — Published research
+description: Simulation models for gridded-ion and Hall-effect thrusters validated against empirical datasets, deriving an analytic model that improves thrust-to-power scaling — published in the Journal of High School Science.
+tagline: Thruster simulation & peer-reviewed publication
 animation: ion-thruster
-date: "2024-06-01"
-tags: [research, plasma, ml, aerospace, publication]
+date: "2024-09-01"
+tags: [research, plasma, simulation, mathematica, aerospace, publication]
 order: 2
 links:
-  paper: ""
+  paper: https://jhss.scholasticahq.com/article/123435-optimization-of-the-thrust-to-power-consumption-ratio-of-ion-thrusters-through-simulations
+  github: https://github.com/DoggoOP/IonThrustersOptimizations
 ---
 
 ## Abstract
 
-[Add abstract here]
+This work develops and validates simulation models for both gridded-ion and Hall-effect electric propulsion thrusters with the goal of deriving an analytic scaling relationship that maximizes thrust-to-power ratio. Models were implemented in Wolfram Language / Mathematica and validated against empirical performance datasets from the University of Michigan's PEPL (Plasma, Electric, and Propulsion) Lab. The resulting analytic model was peer-reviewed and published in the *Journal of High School Science* in September 2024.
 
 ## Methodology
 
-[Add content here]
+Two thruster classes were modeled:
+
+**Gridded ion thrusters** — particle trajectories through the ion optics (screen and accelerator grids) were simulated to predict beam current, specific impulse, and total thrust as a function of discharge voltage, beam extraction area, and propellant flow rate.
+
+**Hall-effect thrusters** — a fluid-plasma model captures electron cross-field transport and ionization within the annular discharge channel, yielding thrust and efficiency curves across a sweep of operating points.
+
+Both models were cross-validated against PEPL laboratory measurements across a range of operating conditions. Parameter sweeps over grid geometry, magnetic field strength, and propellant flow rate identified the regions of highest thrust-to-power efficiency.
 
 ## Results
 
-[Add content here]
+- Derived an analytic scaling model demonstrating improved thrust-to-power ratio as a function of key geometric and operating parameters
+- Simulation outputs matched PEPL empirical data to within acceptable margins across the validated operating range
+- Published peer-reviewed results in the *Journal of High School Science* (Sep 2024)

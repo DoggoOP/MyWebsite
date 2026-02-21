@@ -13,7 +13,7 @@ interface Props {
 const { title, description, tags = [], date, links, animation } = Astro.props;
 ---
 
-<BaseLayout title={`${title} — Ethan Kong`} showBack={true}>
+<BaseLayout title={`${title} — Ethan Kong`} showBack={true} backHref="/">
   <div class="project-hero" data-animation={animation}>
     <canvas id="hero-canvas" class="hero-canvas"></canvas>
     <div class="hero-overlay">
@@ -113,10 +113,7 @@ const { title, description, tags = [], date, links, animation } = Astro.props;
     line-height: 1.1;
     letter-spacing: -0.03em;
     margin-bottom: 12px;
-    background: var(--gradient-plasma);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: rgba(255, 255, 255, 0.95);
   }
 
   .hero-desc {
@@ -230,9 +227,20 @@ const { title, description, tags = [], date, links, animation } = Astro.props;
 
 <script>
   import { initHeroAnimation } from '../scripts/heroAnimations.js';
-  const hero = document.querySelector('[data-animation]') as HTMLElement | null;
-  const canvas = document.getElementById('hero-canvas') as HTMLCanvasElement | null;
-  if (hero && canvas) {
-    initHeroAnimation(hero.dataset.animation!, canvas);
+
+  let cancelAnim: (() => void) | null = null;
+
+  function init() {
+    if (cancelAnim) { cancelAnim(); cancelAnim = null; }
+    const hero = document.querySelector('[data-animation]') as HTMLElement | null;
+    const canvas = document.getElementById('hero-canvas') as HTMLCanvasElement | null;
+    if (hero && canvas) {
+      cancelAnim = initHeroAnimation(hero.dataset.animation!, canvas);
+    }
   }
+
+  document.addEventListener('astro:page-load', init);
+  document.addEventListener('astro:before-preparation', () => {
+    if (cancelAnim) { cancelAnim(); cancelAnim = null; }
+  });
 </script>

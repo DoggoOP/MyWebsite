@@ -1,23 +1,34 @@
 ---
 title: Tempo
-description: A spatial memory capture app built at TreeHacks that lets you annotate 3D scans of your environment.
-tagline: Spatial memory capture — TreeHacks 2024
+description: Distributed multi-sensor volumetric capture system reconstructing navigable 3D point clouds for desktop, web, and HoloLens — shortlisted for Grand Prize at TreeHacks 2026.
+tagline: 4D volumetric telepresence — TreeHacks 2026
 animation: tempo
-date: "2024-02-01"
-tags: [ios, swift, 3d, ar, hackathon]
+date: "2026-02-01"
+tags: [c++, csharp, threejs, websocket, kinect, opengl, hackathon]
 order: 1
 links:
-  github: https://github.com/DoggoOP/tempo
+  github: https://github.com/DoggoOP/Tempo
+  demo: https://devpost.com/software/tempo-l1idkw
 ---
 
 ## Overview
 
-Tempo was built at TreeHacks 2024. It allows users to capture 3D point cloud snapshots of their environment and attach spatial annotations — notes, circles, and freehand drawings pinned directly in 3D space.
+Tempo is a 4D volumetric telepresence and chrono-spatial memory system built at TreeHacks 2026, where it was shortlisted for the Grand Prize. It captures navigable 3D point clouds from distributed Kinect v2 sensors and streams them in real time to desktop, web (Three.js), and HoloLens viewers — letting you walk around a live scene or scrub back through a 900-frame ring buffer replay.
 
-## How It Works
+## Architecture
 
-[Add content here]
+The system is split across three layers:
+
+**Capture clients (C++)** — One process per Kinect v2 sensor. Each client encodes depth + color into a 9-byte-per-vertex quantized frame (optional ZSTD compression) and streams it over a framed TCP protocol to the orchestrator.
+
+**Orchestrator (C#)** — Receives frames from all clients, applies OpenCV `solvePnP` extrinsic calibration to align sensors into a shared world frame, and optionally runs C++ ICP refinement for tighter registration. Fused frames are broadcast to connected viewers via WebSocket.
+
+**Viewers** — A Three.js web client renders the live point cloud with orbit controls and a scrub bar for the replay buffer. A HoloLens client overlays the capture in AR. Multi-user annotations (point, circle, freehand) are synced across all connected sessions and stored in the `.lssnap` binary format.
 
 ## Technical Details
 
-[Add content here]
+- **Protocol**: custom framed TCP (length-prefixed) between C++ clients and C# orchestrator; WebSocket fan-out to viewers
+- **Calibration**: OpenCV `solvePnP` for extrinsics; optional C++ ICP refinement per fused frame
+- **Compression**: 9 bytes/vertex (3 × Int16 XYZ quantized to mm, 3 × Uint8 RGB); optional ZSTD for bandwidth-constrained links
+- **Replay**: 900-frame ring buffer in the orchestrator with per-frame timestamps; viewers can scrub the timeline
+- **Annotations**: serialized as JSON inside `.lssnap` files alongside the point cloud geometry

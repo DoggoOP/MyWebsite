@@ -17,12 +17,12 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     <section class="landing-bio">
       <div class="bio-card glass-card" id="bio-card">
         <p class="bio-greeting">
-          hi i'm <span class="gradient-text">ETHAN KONG</span>
+          hi i'm <span class="hero-name">ETHAN KONG</span>
         </p>
 
         <p class="bio-text">
           I was born and raised in Hong Kong and am now studying Aeronautics
-          and Astronautics at UC Berkeley. I love to make cool and fun projects,
+          and Astronautics at Stanford. I love to make cool and fun projects,
           which you can take a look at here. I hope you enjoy exploring my
           projects as much as I enjoyed working on them.
         </p>
@@ -129,6 +129,10 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     letter-spacing: -0.02em;
   }
 
+  .hero-name {
+    color: rgba(255, 255, 255, 0.95);
+  }
+
   .bio-text {
     font-size: 14px;
     line-height: 1.7;
@@ -180,84 +184,195 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
 </style>
 
 <script>
-  // ─── Animated topographic background ───────────────────────────────────────
+  // ─── Rising smoke fluid background ─────────────────────────────────────────
   (function initBg() {
     const canvas = document.getElementById('bg-canvas') as HTMLCanvasElement | null;
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d')!;
 
-    // Offscreen low-res canvas for perf
-    const OW = 320, OH = 180;
+    // Grid — 200×112 keeps pressure solver fast at 60fps
+    const W = 200, H = 112, N = W * H;
+
+    let u  = new Float32Array(N), u2 = new Float32Array(N);
+    let v  = new Float32Array(N), v2 = new Float32Array(N);
+    let c  = new Float32Array(N), c2 = new Float32Array(N); // smoke density 0→1
+    const p   = new Float32Array(N);
+    const div = new Float32Array(N);
+
+    // Start with small random velocity seed so smoke immediately curls
+    for (let I = 0; I < N; I++) {
+      u[I] = (Math.random() - 0.5) * 0.04;
+      v[I] = (Math.random() - 0.5) * 0.04;
+    }
+
     const off = document.createElement('canvas');
-    off.width = OW; off.height = OH;
+    off.width = W; off.height = H;
     const offCtx = off.getContext('2d')!;
-    const imgData = offCtx.createImageData(OW, OH);
+    const imgData = offCtx.createImageData(W, H);
     const pix = imgData.data;
 
-    function resize() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     resize();
     window.addEventListener('resize', resize);
 
-    let t = 0;
-
-    // Large blobs: bx/by are center fractions, vx/vy are drift frequencies
-    const blobs = [
-      { bx: 0.20, by: 0.32, vx: 0.38, vy: 0.27, r: 0.60, phase: 0.00, cr: 0,   cg: 210, cb: 255 },
-      { bx: 0.80, by: 0.68, vx: 0.27, vy: 0.43, r: 0.52, phase: 2.09, cr: 130, cg: 0,   cb: 240 },
-      { bx: 0.50, by: 0.82, vx: 0.21, vy: 0.34, r: 0.44, phase: 4.19, cr: 0,   cg: 220, cb: 160 },
-    ];
-
-    function render() {
-      t += 0.004;
-
-      const bpos = blobs.map(b => ({
-        x: (b.bx + Math.sin(t * b.vx + b.phase) * 0.13) * OW,
-        y: (b.by + Math.cos(t * b.vy + b.phase * 0.9) * 0.10) * OH,
-        r: b.r * Math.min(OW, OH),
-        cr: b.cr, cg: b.cg, cb: b.cb,
-      }));
-
-      for (let py = 0; py < OH; py++) {
-        for (let px = 0; px < OW; px++) {
-          let r = 4, g = 4, b = 12;
-
-          for (const blob of bpos) {
-            const dx = px - blob.x;
-            const dy = py - blob.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const norm = dist / blob.r;
-            if (norm >= 1.7) continue;
-
-            // Topographic banding: alternate dark/light rings
-            const numBands = 13;
-            const band = Math.floor(norm * numBands);
-            const isDark = band % 2 === 0;
-
-            const intensity = Math.pow(Math.max(0, 1 - norm * 0.65), 1.2) * (isDark ? 0.25 : 1.0);
-
-            r = Math.max(r, blob.cr * intensity);
-            g = Math.max(g, blob.cg * intensity);
-            b = Math.max(b, blob.cb * intensity);
-          }
-
-          const i = (py * OW + px) * 4;
-          pix[i]   = r | 0;
-          pix[i+1] = g | 0;
-          pix[i+2] = b | 0;
-          pix[i+3] = 255;
+    function clamp(x: number, lo: number, hi: number) { return x < lo ? lo : x > hi ? hi : x; }
+    function gidx(xi: number, yi: number) {
+      return (clamp(yi | 0, 0, H-1) * W) + clamp(xi | 0, 0, W-1);
+    }
+    function samp(f: Float32Array, x: number, y: number) {
+      const x0 = x|0, y0 = y|0, fx = x-x0, fy = y-y0;
+      return f[gidx(x0,   y0)]   * (1-fx)*(1-fy)
+           + f[gidx(x0+1, y0)]   *  fx   *(1-fy)
+           + f[gidx(x0,   y0+1)] * (1-fx)* fy
+           + f[gidx(x0+1, y0+1)] *  fx   * fy;
+    }
+    function advect(src: Float32Array, dst: Float32Array, dt: number) {
+      for (let j = 0; j < H; j++) {
+        for (let i = 0; i < W; i++) {
+          const I = j*W+i;
+          dst[I] = samp(src, i - clamp(u[I],-6,6)*dt, j - clamp(v[I],-6,6)*dt);
         }
       }
+    }
+    function project() {
+      for (let j = 1; j < H-1; j++)
+        for (let i = 1; i < W-1; i++) {
+          const I = j*W+i;
+          div[I] = -0.5*((u[I+1]-u[I-1])+(v[I+W]-v[I-W]));
+        }
+      p.fill(0);
+      for (let iter = 0; iter < 30; iter++)
+        for (let j = 1; j < H-1; j++)
+          for (let i = 1; i < W-1; i++) {
+            const I = j*W+i;
+            p[I] = (div[I]+p[I-1]+p[I+1]+p[I-W]+p[I+W])*0.25;
+          }
+      for (let j = 1; j < H-1; j++)
+        for (let i = 1; i < W-1; i++) {
+          const I = j*W+i;
+          u[I] -= 0.5*(p[I+1]-p[I-1]);
+          v[I] -= 0.5*(p[I+W]-p[I-W]);
+        }
+      // Full no-slip on all four walls
+      for (let i = 0; i < W; i++) {
+        u[i] = 0; v[i] = 0;                   // top
+        u[(H-1)*W+i] = 0; v[(H-1)*W+i] = 0;  // bottom
+      }
+      for (let j = 0; j < H; j++) {
+        u[j*W] = 0; v[j*W] = 0;               // left
+        u[j*W+W-1] = 0; v[j*W+W-1] = 0;      // right
+      }
+    }
 
+    // Diffuse: spread concentration laterally (prevents column artifacts)
+    function diffuse(src: Float32Array, dst: Float32Array, k: number) {
+      for (let j = 1; j < H-1; j++) {
+        for (let i = 1; i < W-1; i++) {
+          const I = j*W+i;
+          dst[I] = src[I] + k * (src[I-1]+src[I+1]+src[I-W]+src[I+W] - 4*src[I]);
+        }
+      }
+      for (let i = 0; i < W; i++) { dst[i] = src[i]; dst[(H-1)*W+i] = src[(H-1)*W+i]; }
+      for (let j = 0; j < H; j++) { dst[j*W] = src[j*W]; dst[j*W+W-1] = src[j*W+W-1]; }
+    }
+
+    // Splat: force + optional smoke injection
+    function splat(gx: number, gy: number, fu: number, fv: number, rad: number, dc = 0) {
+      const x0 = Math.max(0,(gx-rad)|0), x1 = Math.min(W-1,(gx+rad+1)|0);
+      const y0 = Math.max(0,(gy-rad)|0), y1 = Math.min(H-1,(gy+rad+1)|0);
+      for (let j = y0; j <= y1; j++) {
+        for (let i = x0; i <= x1; i++) {
+          const d2 = (i-gx)**2+(j-gy)**2;
+          if (d2 >= rad*rad) continue;
+          const w = Math.exp(-d2/(rad*rad*0.4));
+          const I = j*W+i;
+          u[I] += fu*w; v[I] += fv*w;
+          if (dc > 0) c[I] = Math.min(1, c[I]+dc*w);
+        }
+      }
+    }
+
+    // ── Monochromatic smoke LUT: bright background → dark dense smoke ─────────
+    const LUT = 1024;
+    const lutR = new Uint8Array(LUT), lutG = new Uint8Array(LUT), lutB = new Uint8Array(LUT);
+    const stops: [number, [number,number,number]][] = [
+      [0.00, [220, 228, 245]],
+      [0.22, [160, 165, 188]],
+      [0.42, [85,  90, 110]],
+      [0.62, [32,  35,  48]],
+      [0.82, [10,  11,  18]],
+      [1.00, [4,   4,    8]],
+    ];
+    for (let k = 0; k < LUT; k++) {
+      const t = k/(LUT-1);
+      let si = 0;
+      while (si < stops.length-2 && t > stops[si+1][0]) si++;
+      const [ta,ca] = stops[si], [tb,cb] = stops[si+1];
+      const f = (t-ta)/(tb-ta);
+      lutR[k] = (ca[0]+f*(cb[0]-ca[0]))|0;
+      lutG[k] = (ca[1]+f*(cb[1]-ca[1]))|0;
+      lutB[k] = (ca[2]+f*(cb[2]-ca[2]))|0;
+    }
+
+    let mx = -1, my = -1, pmx = -1, pmy = -1;
+    window.addEventListener('mousemove', (e: MouseEvent) => {
+      pmx = mx; pmy = my;
+      mx = e.clientX/window.innerWidth*W;
+      my = e.clientY/window.innerHeight*H;
+    });
+
+    function render() {
+      const dt = 1.0;
+      const t  = performance.now() * 0.001;
+
+      // ── Slow uniform smoke seeping in from entire bottom edge ───────────
+      for (let i = 0; i < W; i++) {
+        const wave = 0.65 + 0.35 * Math.sin(t * 0.28 + i * 0.11);
+        c[(H-1)*W + i] = Math.min(1, c[(H-1)*W + i] + 0.001 * wave);
+        c[(H-2)*W + i] = Math.min(1, c[(H-2)*W + i] + 0.0006 * wave);
+      }
+
+      // ── Mouse stirs the smoke ────────────────────────────────────────────
+      if (mx >= 0 && pmx >= 0) {
+        splat(mx, my, (mx-pmx)*4, (my-pmy)*4, 10);
+      }
+      pmx = mx; pmy = my;
+
+      // ── Buoyancy: smoke rises proportional to density ────────────────────
+      for (let I = 0; I < N; I++) v[I] -= c[I] * 0.025;
+
+      // ── Velocity advect + project ────────────────────────────────────────
+      advect(u, u2, dt); advect(v, v2, dt);
+      [u, u2] = [u2, u]; [v, v2] = [v2, v];
+      project();
+
+      // ── Smoke advect + diffuse ────────────────────────────────────────────
+      advect(c, c2, dt);
+      [c, c2] = [c2, c];
+      diffuse(c, c2, 0.12);
+      [c, c2] = [c2, c];
+
+      // ── Top outlet: let smoke escape at ceiling ───────────────────────────
+      for (let i = 0; i < W; i++) {
+        c[i]   *= 0.75;
+        c[W+i] *= 0.88;
+      }
+
+      // ── Gentle global damping ─────────────────────────────────────────────
+      for (let I = 0; I < N; I++) {
+        u[I] *= 0.999; v[I] *= 0.999; c[I] *= 0.9985;
+      }
+
+      // ── Render (exponential tone map so smoke darkens as it accumulates) ───
+      for (let I = 0; I < N; I++) {
+        const tv = 1.0 - Math.exp(-c[I] * 2.0);
+        const k = clamp((tv*(LUT-1)+0.5)|0, 0, LUT-1);
+        pix[I*4] = lutR[k]; pix[I*4+1] = lutG[k]; pix[I*4+2] = lutB[k]; pix[I*4+3] = 255;
+      }
       offCtx.putImageData(imgData, 0, 0);
-
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
-
       requestAnimationFrame(render);
     }
 

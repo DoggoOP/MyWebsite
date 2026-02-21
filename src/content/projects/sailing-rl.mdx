@@ -1,21 +1,40 @@
 ---
 title: Sailing Reinforcement Learning
-description: Training an autonomous sailing agent using reinforcement learning with a custom CFD-based environment.
-tagline: Autonomous sailing via RL
+description: Lattice-Boltzmann CFD across 12,000 wind/sail/angle cases feeding a deep RL policy trained to find time-optimal tacking routes under stochastic wind fields.
+tagline: CFD-grounded autonomous sailing
 animation: sailing-rl
-date: "2023-11-01"
-tags: [reinforcement-learning, sailing, python, simulation]
+date: "2023-07-01"
+tags: [reinforcement-learning, cfd, python, wolfram, simulation, sailing]
 order: 3
+links:
+  github: https://github.com/DoggoOP/SailingReinforcementLearning
 ---
 
 ## Overview
 
-[Add content here]
+Sailing performance depends on a continuous interplay between wind angle, sail trim, and boat heading — a control problem that resists simple rule-based solutions. This project builds a physics-grounded reinforcement learning agent capable of finding time-optimal tacking routes between buoys under realistic, stochastic wind fields.
 
-## Environment
+## CFD Environment
 
-[Add content here]
+The aerodynamic backbone is a **Lattice-Boltzmann CFD** simulation implemented in Wolfram Language. The LBM solver models incompressible 2D flow around a sail cross-section and extracts lift and drag coefficients for a given wind speed, sail angle, and boat-to-wind angle combination.
+
+A full parameter sweep was run across:
+- Wind speed and direction variations
+- Sail trim angles (0°–90°)
+- Boat headings relative to wind (0°–180°)
+
+This produced a **12,000-case dataset** of lift/drag coefficients used to train a surrogate aerodynamics model, allowing the RL environment to query forces at any operating point without re-running the CFD solver each step.
+
+## Reinforcement Learning Policy
+
+A deep policy network was trained using the CFD-derived aerodynamics model embedded in a sailing environment. The agent must navigate from a start buoy to a finish buoy as fast as possible while managing:
+
+- **Tacking decisions** — when to change tack to exploit upwind angles
+- **Sail trim** — continuous adjustment of sail angle for peak drive force
+- **Stochastic wind** — wind direction and speed vary according to a random process during each episode
+
+The policy was trained with a time-to-finish reward, learning to exploit optimal VMG (velocity made good) angles and time tacks correctly rather than sailing a straight but slow line.
 
 ## Results
 
-[Add content here]
+The trained agent successfully learns to tack upwind at near-optimal VMG angles and handles wind shifts adaptively. Compared to a greedy always-point-at-buoy baseline, the RL policy achieves significantly faster completion times on held-out stochastic wind scenarios.

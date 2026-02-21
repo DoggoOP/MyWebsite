@@ -1,13 +1,36 @@
 ---
 title: Skrunners
-description: A food delivery platform for campus communities with real-time order tracking and runner matching.
-tagline: Campus food delivery platform
+description: Aerodynamics lead on a campus autonomous drone delivery team — CADed a blended-fuselage fixed-wing UAV, designed the payload/vertiport interface, and applied CFD iteration and physics-informed inference for stability prediction.
+tagline: Autonomous campus drone delivery — Stanford Student Robotics
 animation: skrunners
-date: "2023-08-01"
-tags: [web, react, nodejs, startup]
+date: "2025-09-01"
+tags: [cfd, cad, uav, aerodynamics, robotics, autonomy]
 order: 6
 ---
 
 ## Overview
 
-[Add content here]
+Skrunners is a campus autonomous drone delivery team operating under Stanford Student Robotics. As **Aerodynamics Lead and Systems Integration Engineer**, I am responsible for the aerodynamic design of the delivery UAV and the physical interfaces between the airframe, payload system, and ground infrastructure.
+
+## Airframe Design
+
+I CADed a **blended-fuselage fixed-wing UAV** sized to carry campus delivery payloads within the team's packaging constraints. The blended fuselage reduces wetted area and smooths the transition between the payload bay and lifting surfaces compared to a conventional tube-and-wing layout.
+
+Key design considerations:
+- Packaging the payload bay, battery, and avionics within the fuselage volume while maintaining acceptable CG travel across payload states
+- Wing planform and airfoil selection balancing cruise efficiency with low-speed handling for autonomous takeoff/landing
+- Structural layout for 3D printing and composite spar integration
+
+## CFD & Stability Analysis
+
+To accelerate the design loop without full CFD on every iteration, I applied a **physics-informed inference model** that uses a small set of CFD-evaluated anchor points combined with analytical thin-airfoil and lifting-line theory to predict:
+
+- Static stability derivatives (Cmα, Clβ) across the design space
+- Dynamic stability modes (phugoid, short-period, Dutch roll) from inferred aerodynamic coefficients
+- Drag polar across the operating envelope
+
+This hybrid approach delivers reliable stability estimates at a fraction of the computational cost of running full CFD on every geometry variant.
+
+## Payload & Vertiport Interface
+
+I designed the **payload interface** for reliable pickup and dropoff — a bottom-mounted bay with a latched door actuated by a servo, sized for the team's standardized delivery container. The **vertiport interface** defines the alignment guides, locking mechanism, and electrical contacts for autonomous charging between flights.
