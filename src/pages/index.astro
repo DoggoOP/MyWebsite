@@ -184,8 +184,11 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
 </style>
 
 <script>
+  let _bgRafId = -1;
+  let _bgResize: (() => void) | null = null;
+
   // ─── Rising smoke fluid background ─────────────────────────────────────────
-  (function initBg() {
+  function initBg() {
     const canvas = document.getElementById('bg-canvas') as HTMLCanvasElement | null;
     if (!canvas) return;
     const ctx = canvas.getContext('2d')!;
@@ -211,9 +214,9 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     const imgData = offCtx.createImageData(W, H);
     const pix = imgData.data;
 
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    resize();
-    window.addEventListener('resize', resize);
+    _bgResize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    _bgResize();
+    window.addEventListener('resize', _bgResize);
 
     function clamp(x: number, lo: number, hi: number) { return x < lo ? lo : x > hi ? hi : x; }
     function gidx(xi: number, yi: number) {
@@ -373,14 +376,14 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
-      requestAnimationFrame(render);
+      _bgRafId = requestAnimationFrame(render);
     }
 
     render();
-  })();
+  }
 
   // ─── Bio card 3D tilt on hover ─────────────────────────────────────────────
-  (function initCardTilt() {
+  function initCardTilt() {
     const card = document.getElementById('bio-card') as HTMLElement | null;
     if (!card) return;
 
@@ -394,5 +397,17 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     card.addEventListener('mouseleave', () => {
       card.style.transform = 'perspective(900px) rotateY(0deg) rotateX(0deg) scale(1)';
     });
-  })();
+  }
+
+  document.addEventListener('astro:page-load', () => {
+    cancelAnimationFrame(_bgRafId);
+    if (_bgResize) { window.removeEventListener('resize', _bgResize); _bgResize = null; }
+    initBg();
+    initCardTilt();
+  });
+
+  document.addEventListener('astro:before-preparation', () => {
+    cancelAnimationFrame(_bgRafId);
+    if (_bgResize) { window.removeEventListener('resize', _bgResize); _bgResize = null; }
+  });
 </script>
