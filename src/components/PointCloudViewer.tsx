@@ -1,11 +1,12 @@
 import './PointCloudViewer.css';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 
 interface PointCloudViewerProps {
   src: string;
   className?: string;
+  filter?: boolean;
 }
 
 interface Annotation {
@@ -59,19 +60,20 @@ function formatBytes(bytes: number): string {
   return (bytes / 1048576).toFixed(1) + ' MB';
 }
 
-export default function PointCloudViewer({ src, className }: PointCloudViewerProps) {
+export default function PointCloudViewer({ src, className, filter = true }: PointCloudViewerProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<{
     renderer?: THREE.WebGLRenderer;
     animId?: number;
     material?: THREE.PointsMaterial;
-    controls?: OrbitControls;
+    controls?: TrackballControls;
+    autoRotating: boolean;
     initialPos?: THREE.Vector3;
     initialTarget?: THREE.Vector3;
     scene?: THREE.Scene;
     camera?: THREE.PerspectiveCamera;
     darkBg: boolean;
-  }>({ darkBg: false });
+  }>({ darkBg: false, autoRotating: true });
 
   const statVertsRef = useRef<HTMLSpanElement>(null);
   const statAnnotsRef = useRef<HTMLSpanElement>(null);
@@ -87,7 +89,7 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
     const s = stateRef.current;
 
     const scene = new THREE.Scene();
-    scene.background = null; // transparent — fluid canvas shows through
+    scene.background = null;
     s.scene = scene;
 
     const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.01, 100);
@@ -100,17 +102,28 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
     container.appendChild(renderer.domElement);
     s.renderer = renderer;
 
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.25;
+    const controls = new TrackballControls(camera, renderer.domElement);
+    controls.rotateSpeed = 2.5;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.8;
+    controls.dynamicDampingFactor = 0.15;
     s.controls = controls;
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 
     const animate = () => {
       s.animId = requestAnimationFrame(animate);
+      // Manual auto-rotate around Y axis
+      if (s.autoRotating && s.camera && s.controls) {
+        const target = s.controls.target;
+        const pos = s.camera.position;
+        const dx = pos.x - target.x;
+        const dz = pos.z - target.z;
+        const angle = 0.0005;
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        s.camera.position.x = target.x + dx * cos - dz * sin;
+        s.camera.position.z = target.z + dx * sin + dz * cos;
+      }
       controls.update();
       renderer.render(scene, camera);
     };
@@ -121,6 +134,7 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
       camera.aspect = container.clientWidth / container.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
+      controls.handleResize();
     };
     window.addEventListener('resize', onResize);
 
@@ -135,38 +149,43 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
         byteLength = byteLength || buffer.byteLength;
         const data = parseLssnap(buffer);
 
-        // ── Filter to right-side person (highlighted quadrant) ──────────────
-        const tmpGeo = new THREE.BufferGeometry();
-        tmpGeo.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
-        tmpGeo.computeBoundingBox();
-        const fullBox = tmpGeo.boundingBox!;
-        const fullCenter = new THREE.Vector3();
-        fullBox.getCenter(fullCenter);
-        const fullSize = new THREE.Vector3();
-        fullBox.getSize(fullSize);
+        let finalPositions: Float32Array;
+        let finalColors: Float32Array;
 
-        // right 50%: x >= center_x
-        // back 55%:  z >= min_z + 45% of z-range
-        // bottom 70%: y <= min_y + 70% of y-range
-        const xCut = fullCenter.x;
-        const zCut = fullBox.min.z + fullSize.z * 0.75;
-        const yCutMax = fullBox.min.y + fullSize.y * 0.45;
-        const filtPos: number[] = [], filtCol: number[] = [];
-        for (let vi = 0; vi < data.vertexCount; vi++) {
-          const x = data.positions[vi*3];
-          const y = data.positions[vi*3+1];
-          const z = data.positions[vi*3+2];
-          if (x >= xCut && z <= zCut && y >= yCutMax) {
-            filtPos.push(x, y, z);
-            filtCol.push(data.colors[vi*3], data.colors[vi*3+1], data.colors[vi*3+2]);
+        if (filter) {
+          // ── Filter to right-side person (highlighted quadrant) ──────────────
+          const tmpGeo = new THREE.BufferGeometry();
+          tmpGeo.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
+          tmpGeo.computeBoundingBox();
+          const fullBox = tmpGeo.boundingBox!;
+          const fullCenter = new THREE.Vector3();
+          fullBox.getCenter(fullCenter);
+          const fullSize = new THREE.Vector3();
+          fullBox.getSize(fullSize);
+
+          const xCut = fullCenter.x;
+          const zCut = fullBox.min.z + fullSize.z * 0.75;
+          const yCutMax = fullBox.min.y + fullSize.y * 0.5;
+          const filtPos: number[] = [], filtCol: number[] = [];
+          for (let vi = 0; vi < data.vertexCount; vi++) {
+            const x = data.positions[vi*3];
+            const y = data.positions[vi*3+1];
+            const z = data.positions[vi*3+2];
+            if (x >= xCut && z <= zCut && y >= yCutMax) {
+              filtPos.push(x, y, z);
+              filtCol.push(data.colors[vi*3], data.colors[vi*3+1], data.colors[vi*3+2]);
+            }
           }
+          finalPositions = new Float32Array(filtPos);
+          finalColors    = new Float32Array(filtCol);
+        } else {
+          finalPositions = data.positions;
+          finalColors    = data.colors;
         }
-        const filtPositions = new Float32Array(filtPos);
-        const filtColors    = new Float32Array(filtCol);
 
         const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.BufferAttribute(filtPositions, 3));
-        geo.setAttribute('color',    new THREE.BufferAttribute(filtColors, 3));
+        geo.setAttribute('position', new THREE.BufferAttribute(finalPositions, 3));
+        geo.setAttribute('color',    new THREE.BufferAttribute(finalColors, 3));
         const mat = new THREE.PointsMaterial({ size: 3, vertexColors: true, sizeAttenuation: false });
         s.material = mat;
         const pc = new THREE.Points(geo, mat);
@@ -180,8 +199,8 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
         box.getSize(size);
         const maxDim = Math.max(size.x, size.y, size.z);
         controls.target.copy(center);
-        // Slightly elevated, frontal — farther back so model fits the card height
-        camera.position.set(center.x - maxDim * 0.1, center.y + maxDim * 0.25, center.z + maxDim * 1.6);
+        camera.up.set(0, 0, 1);
+        camera.position.set(center.x - maxDim * 0.5, center.y - maxDim * 2.8, center.z);
         camera.lookAt(center);
         controls.update();
         s.initialPos = camera.position.clone();
@@ -241,10 +260,11 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
     return () => {
       window.removeEventListener('resize', onResize);
       if (s.animId) cancelAnimationFrame(s.animId);
+      controls.dispose();
       renderer.dispose();
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
-  }, [src]);
+  }, [src, filter]);
 
   const handlePointSize = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (stateRef.current.material) stateRef.current.material.size = parseFloat(e.target.value);
@@ -268,11 +288,9 @@ export default function PointCloudViewer({ src, className }: PointCloudViewerPro
 
   const handleAutoRotate = () => {
     const s = stateRef.current;
-    if (s.controls) {
-      s.controls.autoRotate = !s.controls.autoRotate;
-      if (autoRotateBtnRef.current)
-        autoRotateBtnRef.current.textContent = 'Auto-Rotate: ' + (s.controls.autoRotate ? 'ON' : 'OFF');
-    }
+    s.autoRotating = !s.autoRotating;
+    if (autoRotateBtnRef.current)
+      autoRotateBtnRef.current.textContent = 'Auto-Rotate: ' + (s.autoRotating ? 'ON' : 'OFF');
   };
 
   return (

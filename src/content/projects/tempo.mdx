@@ -11,24 +11,162 @@ links:
   demo: https://devpost.com/software/tempo-l1idkw
 ---
 
+import PointCloudViewer from '../../components/PointCloudViewer.tsx';
+
+<div style="height: 500px; margin: 0 0 40px; border-radius: 8px; overflow: hidden;">
+  <PointCloudViewer src="/assets/3dImage.lssnap" filter={false} client:only="react" />
+</div>
+
 ## Overview
 
-Tempo is a 4D volumetric telepresence and chrono-spatial memory system built at TreeHacks 2026, where it was shortlisted for the Grand Prize. It captures navigable 3D point clouds from distributed Kinect v2 sensors and streams them in real time to desktop, web (Three.js), and HoloLens viewers — letting you walk around a live scene or scrub back through a 900-frame ring buffer replay.
+Tempo is a real-time volumetric capture + playback platform that turns physical moments into saveable, navigable 6D media built at TreeHacks 2026, where it was shortlisted for the Grand Prize. You can move around and interact with an object in front of you, not a video on a screen.
 
-## Architecture
+Tempo connects capture, reconstruction, data transport, and interaction all into one continuous pipeline:
 
-The system is split across three layers:
+1. Multi-sensor ingest
+2. Calibration (Orthogonal Procrustes Alignment) and fusion [1],[5], optional geometric (ICP) refinement [2]
+3. Temporal buffering + indexing (live + recorded timelines)
+4. Compression/chunking for streaming/recording [7]
+5. Rendering outputs including Gaussian-splats [8]
+6. Multi-endpoint playback (AR, VR, desktop/TV, mobile/web)
 
-**Capture clients (C++)** — One process per Kinect v2 sensor. Each client encodes depth + color into a 9-byte-per-vertex quantized frame (optional ZSTD compression) and streams it over a framed TCP protocol to the orchestrator.
+On immersive devices like the HoloLens 2 (AR), the user's interaction with the app is spatial and gesture-native, built into the Tempo app for HoloLens 2. However, on flat displays, the Ultraleap Leap Motion adds direct hand-based manipulation so volumetric content remains fully interactive even outside AR/VR.
 
-**Orchestrator (C#)** — Receives frames from all clients, applies OpenCV `solvePnP` extrinsic calibration to align sensors into a shared world frame, and optionally runs C++ ICP refinement for tighter registration. Fused frames are broadcast to connected viewers via WebSocket.
+<div style="position:relative; padding-bottom:56.25%; height:0; overflow:hidden; border-radius:8px; margin:16px 0;">
+  <iframe
+    src="https://www.youtube.com/embed/https://www.youtube.com/embed/YqKwPFIWVN0"
+    style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;"
+    allowfullscreen
+    loading="lazy"
+  />
+</div>
 
-**Viewers** — A Three.js web client renders the live point cloud with orbit controls and a scrub bar for the replay buffer. A HoloLens client overlays the capture in AR. Multi-user annotations (point, circle, freehand) are synced across all connected sessions and stored in the `.lssnap` binary format.
+## Inspiration
+For nearly two centuries, cameras have helped us record history, but they’ve always flattened it. Even with monumental improvements in the recording quality (Higher resolution, 360°, spatial audio), videos still force you to stand where the camera stood. You can watch the past, but you can’t explore it, question it, inspect it, interact with it, or truly step back into it.
 
-## Technical Details
+Tempo treats recording time and history as a spatial endeavour. It captures moments as full 3D environments that can be revisited, navigated, and projected back into the world through holograms and 3D tracking. Instead of replaying footage, you can relive events and explore them as a navigable space.
 
-- **Protocol**: custom framed TCP (length-prefixed) between C++ clients and C# orchestrator; WebSocket fan-out to viewers
-- **Calibration**: OpenCV `solvePnP` for extrinsics; optional C++ ICP refinement per fused frame
-- **Compression**: 9 bytes/vertex (3 × Int16 XYZ quantized to mm, 3 × Uint8 RGB); optional ZSTD for bandwidth-constrained links
-- **Replay**: 900-frame ring buffer in the orchestrator with per-frame timestamps; viewers can scrub the timeline
-- **Annotations**: serialized as JSON inside `.lssnap` files alongside the point cloud geometry
+Our goal isn’t just better media. It’s building a long-term system for preserving reality itself, so future generations can experience moments in history, science, and everyday life as places, not recordings.
+
+## Key Capabilities
+1. Live streaming of holographic capture to any screen
+- Watch a live volumetric reconstruction from any angle with pause, rewind, scrub, orbit, translate, scale
+- Supports cross-platform streaming at the same time
+2. Capture once, replay anywhere
+- Replay the 3D reconstruction with the same controls as the live stream
+- Also works cross-platform
+3. Markups/Annotations
+- Draw, highlight, and annotate with multiple colour options, directly on the scene, while live streaming
+- Shared annotations will be seen on all the shared streams (including cross-platform)
+
+<div style="height: 480px; margin: 24px 0; border-radius: 8px; overflow: hidden;">
+  <img src="/assets/tempo3.png" filter={false} client:only="react" />
+</div>
+
+4. Instant replay of last 30 seconds
+- Similar to NVIDIA shadowplay, uses a rolling RAM buffer to continuously store the last N seconds (customizable, but defaults to 30)
+5. Temporal difference comparison (Git diffs for reality)
+- Compare saved reference frames to each other, or to the current live view
+- Previous (saved) frames will show up as red, current/live in green
+
+<div style="height: 480px; margin: 24px 0; border-radius: 8px; overflow: hidden;">
+  <img src="/assets/tempo2.png" filter={false} client:only="react" />
+</div>
+
+6. Separate interactions for streaming endpoints
+- HoloLens 2: pinch/grab + voice commands, spatial and gesture-native
+- 2D displays: uses Leap Motion for hand tracking to rotate/translate/scale/scrub
+- Mobile/web: touch gestures for zoom/rotate/translate
+
+## How we Built it
+### Core Hardware:
+
+- 3 Microsoft Xbox Kinect One v2 Sensors
+- 3 client laptops (one per kinect due to SDK constraints)
+- 1 server laptop
+- Microsoft Hololens 2
+- Ultraleap Leap Motion
+
+### System Architecture (Distributed Client-Server Architecture):
+
+- Client apps: sensor control + stream frames
+- Server app: calibration, synchronization, fusion, buffering, compression/chunking, multi-endpoint distribution (live stream output)
+
+Tempo uses the Kinects for their LiDAR + RGB capture capabilities [6]. Three sensors send their data through associated instances of the client app to a central server app that calibrates and merges the data into a single 3D point-cloud scene [3],[4].
+
+### Calibration + Reconstruction:
+
+- Marker-based multi-camera alignment using Orthogonal Procrustes by calculating the necessary transformation from each sensor to the calibration marker given the marker's coordinates (default to 0,0,0) [1],[5]. Initial calibration also checks against flipped solutions for edge cases of Procrustes.
+- ptional ICP refinement after calibration and filtering point cloud [2],[4]
+- Compressed chunk recording for live streaming + replay [7]
+- Export path for Gaussian splats [8]
+
+### Tech Stack:
+
+- Languages: C, C++, C#, HTML/CSS, Python
+- Libraries: Kinect Studio v2.0 SDK, OpenCV, ICP Pipeline [2],[4]
+- XR: Unity + Hololens 2
+- Hand tracking: Ultraleap Leap Motion, Ultraleap Hyperion
+
+## Challenges we ran into
+- Kinect v2 on Windows SDK allows only one sensor per machine. This could be bypassed on a lower level by using a different OS, but the tradeoff was not worth it for the rest of development, so we had to run a distributed topology with multiple client laptops plus a central server.
+- Calibration matrix transformation rotations had some trouble with the marker being placed in certain directions (for example, the Orthogonal Procrustes method didn't account for the images being 180 degrees apart). We implemented functions to reject bad rotation candidates, and add consistency checks to avoid flipped alignment states.
+- Sensor interference, especially during calibration: The LiDAR sensors in the Kinects would sometimes interfere with one another if not positioned well enough, leading to inaccurate or slower detection
+- Handling high-frequency frame ingress, point-cloud fusion, temporal buffering, and compression, simultaneously pushed the RAM and VRAM, which caused a lot of instability and system issues, like momentary freezes and crashes. We had to implement memory discipline.
+- Managed/unmanaged interop and Garbage collection stalls: our stack crosses C++ and C# , so object lifetime management became very complex. Garbage collection sometimes paused randomly, and we suspect it was caused by pinned buffers, native pointer handoff, and frequent allocations, so we had to minimize allocation churn and aggressively reuse buffers to prevent visible playback hitches.
+- Point processing performance depended heavily on memory layout and SIMD friendliness, and our initial, naive, structures killed cache efficiency. We improved vectorized execution paths, and reduced RAM traversal during filtering, fusion, and culling.
+- To keep interaction real-time, we needed aggressive frustum culling and LOD (level of detail). Finding the balance was hard, since being too aggressive made the clouds look unstable, but culling too little heavily increased latency.
+- The server laptop needs speed and significant computing power for fusing and rendering the multiple point cloud streams, so we had to optimize kernel granularity, batch sizes, and transfer timing so that GPU acceleration effectively improved latency.
+- When a previous stage outruns another the next one, the whole pipeline fails; Camera ingest, server fusion, compression, and client playback each had different throughput ceilings, so we implemented queue limits, ring buffers, a dropped certain frames, to prevent buffer blowups and cascading stalls.
+- Although we knew it since the inception of the idea, cross-platform output modules were essentially separate products that were unrelated, meaning programming all of them took a long time. The server creates one volumetric reconstruction, but it has to be serialized and rendered differently for each platform: Hololens, browser/mobile, desktop + Leap Motion all required unique transport, rendering, input mapping, and buffering logic
+
+## Use cases
+A few examples:
+
+- Education: Teachers can stream a live scene to any screen, and students can watch it live or replay the same capture. Both teachers and students can annotate any points of curiosity during live stream
+- Science and research labs: Record experiments, use diffs view to detect changes between baseline different state
+- Industrial inspection: capture known "good" reference states, then run diff view during checks
+- Sports/entertainment: rewind and view from any angle
+- Design iteration/prototyping physical work: diffs view would be useful for art, like pottery, sculpting, etc.)
+- Law enforcement: use replay or diffs view to see any changes in evidence at scenes.
+There are many more use cases; 3D telepresence and reality replay is not limited to the industries of today. It will become a whole field of its own, in the same way that peripherals like the mouse revolutionized the way we navigate digital technology.
+
+### Accomplishments that we are proud of
+- Built a fully working volumetric display and replay system
+- Created multiple media viewing points for the volumetric display, all with interactive controls that are different from each other, but intuitive (XR, web + mobile, flat screen + leap motion)
+- Designed an efficient and accurate calibration, refinement, and noise-filtering system for multiple sensors.
+- We read more research (to figure out the math) than we have ever read before.
+
+### What we learned
+- Sensor calibration and 3D graphics optimization: Visual marker detection and calibration, ICP refinement, error correction, point cloud rendering and frame streaming, chunk selection/management, etc.
+- Multi-platform delivery works best when reconstruction and rendering are cleanly separated
+- Compression and indexing strategy directly affect both live and replay quality, latency, and user experience
+
+### Future Developments
+Short term (coming soon):
+
+- Improve reconstruction quality and temporal stability
+- Add timeline tooling (bookmarks, annotations, key-moment jumps)
+- Support for LLM analyses of videos
+- Formalize VR playback support as a native endpoint (building on current volumetric output pipeline)
+- Integrate newer sensors (with both LiDAR and RGB capture capability) rather than the outdated Kinect sensors Long term (future ambitions):
+- Implement auto-calibration without a marker sheet
+- Output a mesh instead of a point cloud to improve visualization resolution, and allow for ray-tracing
+
+### References
+[1] P. H. Schönemann, “A Generalized Solution of the Orthogonal Procrustes Problem,” Psychometrika, vol. 31, no. 1, pp. 1–10, 1966, doi: 10.1007/BF02289451.
+
+[2] P. J. Besl and N. D. McKay, “A Method for Registration of 3-D Shapes,” IEEE Transactions on Pattern Analysis and Machine Intelligence, vol. 14, no. 2, pp. 239–256, 1992, doi: 10.1109/34.121791.
+
+[3] B. Curless and M. Levoy, “A Volumetric Method for Building Complex Models from Range Images,” in Proc. SIGGRAPH, 1996, pp. 303–312, doi: 10.1145/237170.237269.
+
+[4] R. B. Rusu and S. Cousins, “3D is here: Point Cloud Library (PCL),” in 2011 IEEE International Conference on Robotics and Automation (ICRA), pp. 1–4, doi: 10.1109/ICRA.2011.5980567.
+
+[5] N. Garcia-D’Urso, B. Sanchez-Sos, J. Azorin-Lopez, A. Fuster-Guillo, A. Macia-Lillo, and H. Mora-Mora, “Marker-Based Extrinsic Calibration Method for Accurate Multi-Camera 3D Reconstruction,” arXiv:2505.02539, 2025.
+
+[6] L. Yang, L. Zhang, H. Dong, A. Alelaiwi, and A. El Saddik, “Evaluating and Improving the Depth Accuracy of Kinect for Windows v2,” arXiv:2212.13844, 2022.
+
+[7] A. Chen, S. Mao, Z. Li, M. Xu, H. Zhang, D. Niyato, and Z. Han, “An Introduction to Point Cloud Compression Standards,” GetMobile, vol. 27, no. 1, Mar. 2023.
+
+[8] B. Kerbl, G. Kopanas, T. Leimkühler, and G. Drettakis, “3D Gaussian Splatting for Real-Time Radiance Field Rendering,” arXiv:2308.04079, 2023
+

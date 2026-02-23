@@ -10,11 +10,11 @@ order: 5
 
 ## Overview
 
-This project is a fully custom 1.8-metre fixed-wing UAV — designed from scratch in Fusion 360, aerodynamically evaluated in Autodesk CFD, and 3D-printed across multiple print sessions. The goal was to build a capable autonomous platform using accessible fabrication methods, demonstrating that a flight-worthy UAV with autopilot, telemetry, and waypoint navigation can be produced entirely from desktop tools and a consumer FDM printer.
+This project is a fully custom 1.8-metre fixed-wing UAV — designed from scratch in Fusion 360, aerodynamically evaluated in Autodesk CFD, and 3D-printed across multiple print sessions. The end goal was to build an autonomously navigated observation plane without GPS that can fly along the coasts of Malaysia with a camera and alert local law enforcement when it detectds turtle poachers. The lack of GPS is to ensure the poachers are unable to jam the UAV's avionics with their EMF guns.
 
 ## Design & CFD
 
-The airframe was designed in **Fusion 360** with a focus on printability: each section is sized to fit a standard print bed, with alignment pins and bonded joints at the wing-fuselage and tail interfaces. Wing geometry was iterated in **Autodesk CFD** to evaluate lift-to-drag ratio and stall characteristics across the expected speed range, informing the final airfoil selection and wing incidence angle.
+The airframe was designed in **Fusion 360** with a focus on minimizing weight and modularity: each section is sized to fit a standard print bed, with alignment pins and bonded joints at the wing-fuselage and tail interfaces. Wing geometry was iterated in **Autodesk CFD** to evaluate lift-to-drag ratio and stall characteristics across the expected speed range, informing the final airfoil selection and wing attack angle.
 
 Structural considerations drove wall thicknesses, infill patterns, and spar routing — the main wing spar is a carbon rod bonded into printed spar tubes in each wing panel.
 
