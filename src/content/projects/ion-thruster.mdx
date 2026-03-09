@@ -11,22 +11,79 @@ links:
   github: https://github.com/DoggoOP/IonThrustersOptimizations
 ---
 
-## Abstract
+<div style="margin: 24px 0; border-radius: 8px; overflow: hidden;">
+  <img src="/assets/halltrajplot.png" style="width: 100%; display: block;" />
+</div>
 
-This work develops and validates simulation models for both gridded-ion and Hall-effect electric propulsion thrusters with the goal of deriving an analytic scaling relationship that maximizes thrust-to-power ratio. Models were implemented in Wolfram Language / Mathematica and validated against empirical performance datasets from the University of Michigan's PEPL (Plasma, Electric, and Propulsion) Lab. The resulting analytic model was peer-reviewed and published in the *Journal of High School Science* in September 2024.
+## Overview
+The thrust-to-power-consumption ratio in electric propulsion systems is one of the most important parameters for creating efficient and reliable propulsion systems for long-duration space missions and interplanetary exploration. This study aims to develop and analyze simulation frameworks for Gridded Ion thrusters and Hall Effect thrusters to enhance the understanding and performance of these propulsion systems. In my research, I defined physical parameters for both propulsion systems, creating implicit 3D geometric regions, numerical solutions to Poisson’s equation for electrostatic potentials, Biot–Savart-derived magnetic field calculations, and differential equation solvers for charged particle motion. After developing the simulation, I ran extensive parameter sweeps and sensitivity analyses to identify the optimal operating conditions for maximizing the thrust to power consumption ratio. The simulation results were compared with empirical data from the University of Michigan's Plasmadynamics and Electric Propulsion Laboratory (PEPL) to give a basis in reality. Based on the optimized parameters for the Gridded Ion thruster and the Hall Effect thruster, I saw notable improvements in performance of up to 50% increase, indicating the potential for more efficient space propulsion systems. This study's findings contribute to the development of more efficient and reliable configurations, setting a foundation for future advancements in space propulsion technology. Further research could involve refining the simulations by incorporating plasma friction and ionization processes for greater accuracy.
+
+## What is electric propulsion
+Electric propulsion is a rocket propulsion technique that uses electrostatic and electromagnetic forces rather than chemical combustion to confine and accelerate a plasma to speeds up to 100km/s to produce thrust, enabling extremely high specific impulse.
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0;">
+  <img src="public/assets/griddedThruster.png" alt="Left image" style="width:100%; border-radius:6px;" />
+  <img src="public/assets/HallEffectThruster.gif" style="width:100%; border-radius:6px;" />
+</div>
+
+## The current problem with ion thrusters
+Their power consumption is too high, requiring a massive power source for miniscule amounts of thrust. Thus this brings us to my research question:
+How can we find the perfect parameters to optimize the thrust-to-power-consumption ratio
 
 ## Methodology
 
-Two thruster classes were modeled:
+### Creating the physics simulation
+I defined the thruster geometries using Mathematica’s implicit region functions to construct spatial domains for anodes, grids, cathodes, magnetic elements and assigning them an electric or magnetic charge.
 
-**Gridded ion thrusters** — particle trajectories through the ion optics (screen and accelerator grids) were simulated to predict beam current, specific impulse, and total thrust as a function of discharge voltage, beam extraction area, and propellant flow rate.
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0;">
+  <img src="public/assets/GridRegions.png" alt="Left image" style="width:100%; border-radius:6px;" />
+  <img src="public/assets/HallRegions.png" style="width:100%; border-radius:6px;" />
+</div>
 
-**Hall-effect thrusters** — a fluid-plasma model captures electron cross-field transport and ionization within the annular discharge channel, yielding thrust and efficiency curves across a sweep of operating points.
+To obtain the electrostatic fields, I used the NDSolve function to numerically solve Poisson's equation and obtain the electric field within the region: 
 
-Both models were cross-validated against PEPL laboratory measurements across a range of operating conditions. Parameter sweeps over grid geometry, magnetic field strength, and propellant flow rate identified the regions of highest thrust-to-power efficiency.
+$$\nabla^2 \phi = -\frac{\rho}{\varepsilon}$$ $$\mathbf{E} = -\nabla \phi$$
 
-## Results
+For Hall thrusters, the magnetic field distributions were computed via the Biot–Savart Law, modeling magnet-generated fields and electron confinement effects. 
 
-- Derived an analytic scaling model demonstrating improved thrust-to-power ratio as a function of key geometric and operating parameters
-- Simulation outputs matched PEPL empirical data to within acceptable margins across the validated operating range
-- Published peer-reviewed results in the *Journal of High School Science* (Sep 2024)
+$$\mathbf{B}(\mathbf{r}) = \frac{\mu_0}{4\pi} \int_C \frac{I \, d\mathbf{l} \times \mathbf{r}'}{|\mathbf{r}'|^3}$$
+
+<div style="margin: 24px 0; border-radius: 8px; overflow: hidden;">
+  <img src="/assets/halltrajplot.png" style="width: 50%; display: block;" />
+</div>
+
+The forces on the ions were simulated by integrating the Lorentz force equation, and I can then solve for the equations of motion to find the trajectory of the ion: 
+
+$$\mathbf{F} = q \left( \mathbf{E} + \mathbf{v} \times \mathbf{B} \right)$$
+
+After all of this, we are able to see the ion trajectory, velocity over time, and spatial energy gain.
+
+### Calculating the thrust and power consumption
+
+Exhaust velocity was extracted by differentiating interpolated trajectory solutions. Thrust was computed from:
+
+$$T = \dot{m} \, v_e \, \eta$$
+
+where ṁ is ion mass flow rate derived from plasma density, ionization rate, and effective cross-sectional area.
+
+I calculated the power consumption by summing the power required for the voltage applied to the different regions, the electromagnet current, the ionization power, the ion kinetic energy, and the constant electron gun. And thus I was able to compute the thrust to power consumption ratio (mN/kW)
+
+### Identifying the optimal parameters
+
+Having defined the simulation, I then combined them all into one function and ran parameter sweeps over various anode radius, thickness, height, grid spacing, magnet radius, and channel length across deployable and idealized ranges, generating a correlatioin matrix between parameters and performance for the gridded ion and hall effect thruster respectively.
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0;">
+  <img src="public/assets/GridCorrelation.png" alt="Left image" style="width:100%; border-radius:6px;" />
+  <img src="public/assets/HallCorrelation.png" style="width:100%; border-radius:6px;" />
+</div>
+
+The heatmap showed a strong scaling of thrust with size-related parameters as expected, nonlinear penalties in power consumption, and weak or negative correlations between certain geometric increases and T/P efficiency.
+
+Through the simulations, the optimized configurations achieved thrust to power ratios of
+~14.04 kW/N for a Gridded Ion Thruster as compared to 30 kW/N for NASA's (NEXT) Gridded ion thruster and ~10.59 kW/N for a Hall Effect Thruster as compared to 17 kW/N as compared to the European Space Agency's, SMART1, PPS1350-G Hall Effect thruster
+
+## Validation
+I then compared my simulation outputs with UMichigan's PEPL experimental measurements, including ion velocity and electric potential profiles. Predicted exhaust velocities (~18 km/s) remained within ~10% of empirical data, supporting first-order physical validity under model assumptions
+
+## Future work
+Implementing more accurate phsics such as the ionization process and plasma friction. I would also like to use the Boris Push Method for more accurate particle kinematics.
