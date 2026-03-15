@@ -89,12 +89,14 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     display: flex;
     height: 100vh;
     padding-top: 56px;
+    pointer-events: none;
   }
 
   .landing-viewer {
     flex: 0 0 58%;
     height: 100%;
     position: relative;
+    pointer-events: auto;
   }
 
   .landing-bio {
@@ -103,6 +105,7 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     align-items: center;
     justify-content: center;
     padding: 40px 48px 40px 24px;
+    pointer-events: auto;
   }
 
   .bio-card {

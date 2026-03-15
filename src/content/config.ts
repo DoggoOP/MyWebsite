@@ -8,7 +8,7 @@ const projects = defineCollection({
     tagline: z.string(),
     coverImage: z.string().optional(),
     animation: z.enum([
-      'tempo', 'ion-thruster', 'sailing-rl', 'solar-car',
+      'lattice', 'ion-thruster', 'sailing-rl', 'solar-car',
       '3d-plane', 'skrunners', 'light-switch', 'rocketry', 'polymarket'
     ]),
     date: z.string(),

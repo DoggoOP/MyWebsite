@@ -22,8 +22,8 @@ The thrust-to-power-consumption ratio in electric propulsion systems is one of t
 Electric propulsion is a rocket propulsion technique that uses electrostatic and electromagnetic forces rather than chemical combustion to confine and accelerate a plasma to speeds up to 100km/s to produce thrust, enabling extremely high specific impulse.
 
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0;">
-  <img src="public/assets/griddedThruster.png" alt="Left image" style="width:100%; border-radius:6px;" />
-  <img src="public/assets/HallEffectThruster.gif" style="width:100%; border-radius:6px;" />
+  <img src="/assets/griddedThruster.png" alt="Left image" style="width:100%; border-radius:6px;" />
+  <img src="/assets/HallEffectThruster.gif" style="width:100%; border-radius:6px;" />
 </div>
 
 ## The current problem with ion thrusters
@@ -36,8 +36,8 @@ How can we find the perfect parameters to optimize the thrust-to-power-consumpti
 I defined the thruster geometries using Mathematica’s implicit region functions to construct spatial domains for anodes, grids, cathodes, magnetic elements and assigning them an electric or magnetic charge.
 
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0;">
-  <img src="public/assets/GridRegions.png" alt="Left image" style="width:100%; border-radius:6px;" />
-  <img src="public/assets/HallRegions.png" style="width:100%; border-radius:6px;" />
+  <img src="/assets/GridRegions.png" alt="Left image" style="width:100%; border-radius:6px;" />
+  <img src="/assets/HallRegions.png" style="width:100%; border-radius:6px;" />
 </div>
 
 To obtain the electrostatic fields, I used the NDSolve function to numerically solve Poisson's equation and obtain the electric field within the region: 
@@ -73,8 +73,8 @@ I calculated the power consumption by summing the power required for the voltage
 Having defined the simulation, I then combined them all into one function and ran parameter sweeps over various anode radius, thickness, height, grid spacing, magnet radius, and channel length across deployable and idealized ranges, generating a correlatioin matrix between parameters and performance for the gridded ion and hall effect thruster respectively.
 
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0;">
-  <img src="public/assets/GridCorrelation.png" alt="Left image" style="width:100%; border-radius:6px;" />
-  <img src="public/assets/HallCorrelation.png" style="width:100%; border-radius:6px;" />
+  <img src="/assets/GridCorrelation.png" alt="Left image" style="width:100%; border-radius:6px;" />
+  <img src="/assets/HallCorrelation.png" style="width:100%; border-radius:6px;" />
 </div>
 
 The heatmap showed a strong scaling of thrust with size-related parameters as expected, nonlinear penalties in power consumption, and weak or negative correlations between certain geometric increases and T/P efficiency.

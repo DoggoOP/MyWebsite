@@ -16,7 +16,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
   const H = () => canvas.offsetHeight;
 
   const animators: Record<string, () => void> = {
-    'tempo': animateTempo,
+    'lattice': animateLattice,
     'ion-thruster': animatePlasmaPlume,
     'sailing-rl': animateCFD,
     'solar-car': animateSolarCar,
@@ -35,7 +35,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
     window.removeEventListener('resize', resize);
   };
 
-  function animateTempo() {
+  function animateLattice() {
     const particles = Array.from({ length: 600 }, () => ({
       x: Math.random() * W(), y: Math.random() * H(), z: Math.random(),
       r: Math.floor(Math.random() * 80 + 120),
