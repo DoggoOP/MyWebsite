@@ -1,10 +1,10 @@
 ---
 title: Polymarket Trader Bot
-description: Autonomous trading system for weekly Polymarket prediction markets — multi-source data ingestion, Monte Carlo hedge sizing, Kelly criterion position management, and a live Next.js dashboard.
+description: Autonomous trading system for Polymarket prediction markets — multi-source data ingestion, ensemble forecasting, edge-based execution, and a live monitoring dashboard deployed on Railway.
 tagline: Autonomous prediction market trading
 animation: polymarket
 date: "2025-10-01"
-tags: [python, fastapi, nextjs, sqlite, trading, railway]
+tags: [python, flask, nextjs, sqlite, trading, railway, bayesian-optimization]
 order: 9
 links:
   Dashboard: https://polymarketdashboard-production.up.railway.app/
@@ -12,25 +12,99 @@ links:
 
 ## Overview
 
-This bot autonomously trades weekly Polymarket prediction markets — starting with markets on weekly Musk tweet counts. It handles the full pipeline from data ingestion through trade execution, running on a scheduled Railway deployment with a live Next.js dashboard for monitoring positions and trade history.
+This bot autonomously trades Polymarket prediction markets, focusing on time-bounded markets with measurable underlying signals. It runs end-to-end on a Railway deployment: data collection, forecasting, edge calculation, order execution, and a live Next.js dashboard for monitoring positions, projections, and trade history in real time.
 
-## Data Ingestion
+More than anything, this project has been a long lesson in how easy it is to build something that *looks* profitable in a backtest but is actually doing something completely different than what I think it's doing. Most of the work hasn't been in the prediction model — it's been in catching the bot doing the wrong thing and then writing a constraint that prevents it from doing it again. The architecture below is what survived that process.
 
-The ingestion layer pulls from multiple sources with fallback chains to handle API outages. For tweet-count markets, sources include direct API calls, third-party aggregators, and scraped fallbacks. Raw counts are normalized against a weekly-reset baseline so the model always operates on comparable quantities across different weeks.
+The system is built around four loosely coupled stages, each independently testable and replaceable:
 
-All ingested data and derived signals are persisted in **SQLite with WAL mode** for concurrent read access from the dashboard without blocking the trading loop.
+1. **Data collection** — multi-source polling with fallback chains
+2. **Forecasting** — an ensemble model that maps observed history into a probability distribution over market outcomes
+3. **Edge calculation** — comparing model probabilities against live CLOB prices with realistic spread modeling
+4. **Execution** — Kelly-sized orders routed through the Polymarket CLOB API, with bracket-level risk caps
 
-## Forecast & Risk Engine
+## Live Dashboard
 
-**Distribution model:** The forecast blends a base distribution (fitted from historical weekly tweet counts) with real-time signal updates. A Monte Carlo simulation draws samples from the blended distribution and maps them to market outcome probabilities.
+The dashboard is publicly accessible and shows live ensemble projections, market consensus, per-bracket edge, and current positions across all open markets:
 
-**Position sizing:** Kelly criterion with a fractional cap determines stake sizes. The Monte Carlo hedge layer identifies correlated outcomes and sizes offsetting positions to reduce variance without giving up expected value.
+<div style="position:relative; padding-bottom:62.5%; height:0; overflow:hidden; border-radius:8px; margin:24px 0; border: 1px solid rgba(120,140,200,0.15);">
+  <iframe
+    src="https://polymarketdashboard-production.up.railway.app/"
+    style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;"
+    loading="lazy"
+  />
+</div>
 
-**Execution:** Orders are placed as GTD limits via the Polymarket CLOB API. The bot monitors open orders and applies ordered exits (take-profit → expiry) for each position.
+[polymarketdashboard-production.up.railway.app](https://polymarketdashboard-production.up.railway.app/)
+
+## Data Collection
+
+The ingestion layer pulls from multiple sources with fallback chains to handle API outages and rate limits. Raw observations are normalized against a time-of-day-aware baseline so the model always operates on comparable, regime-adjusted quantities across different markets and time windows.
+
+A scheduler polls every 30 seconds and persists everything to SQLite in WAL mode so the dashboard can read concurrently without blocking the trading loop. New markets are auto-discovered hourly through the Polymarket API, with each market's measurement window parsed from its title — important because the trading window and the resolution window are not always the same interval.
+
+## Forecasting
+
+The forecast layer is an ensemble: multiple independent signals each produce a projection from observed history, and a learned set of weights blends them into a single distribution over final outcomes. Sigma is fit empirically rather than assumed, and the resulting distribution is mapped onto market brackets via a truncated Normal CDF.
+
+Markets with different resolution horizons exhibit different dynamics, so the ensemble runs separate parameter sets per market type — discovered by the optimizer rather than hand-tuned. A pre-market warm-start uses the last 48 hours of underlying activity to initialize the ensemble before a market opens for trading, so the first prediction the bot makes is already informed.
+
+## Edge & Execution
+
+The trading engine compares the model's bracket probabilities against live order-book prices:
+
+$$\text{edge} = p_{\text{model}} - p_{\text{market}} - \tfrac{1}{2}\,\text{spread}$$
+
+Brackets with positive edge are bought, sized by a fractional Kelly rule with a per-bracket hard cap so no single position can dominate the portfolio. The engine exits when the model changes its mind, with trend-aware filters to avoid cutting winners on temporary price moves and a phase-dependent threshold that lets borderline positions ride to resolution rather than churning on noise near bracket boundaries.
+
+Orders route through the Polymarket CLOB API. A paper-trading ledger mirrors the live execution path so strategy changes can be tested end-to-end before any real capital is committed — the only difference between paper and live mode is which broker the engine talks to.
+
+## Things I Got Wrong
+
+Almost every constraint in this codebase exists because the bot did something stupid and lost money first. The interesting part of building this was watching it find loopholes I didn't know existed.
+
+### The backtester wanted to market-make
+
+The first version of the optimizer kept finding strategies that looked phenomenal in-sample. When I dug into the trade logs, the "strategy" it had converged on was effectively market-making: bidding both sides of every bracket and collecting the spread, with the directional model along for the ride.
+
+That's a real strategy, but it's not the one I'm trying to build, and it's *very* fragile to the simulator's spread assumptions — small changes to the spread model would flip it from profitable to ruinous overnight. I added constraints to prevent the optimizer from exploring that region: minimum edge thresholds with hard floors, no offsetting positions on the same market, and a fitness penalty for trip count above a per-market ceiling. Once those were in, the optimizer had to actually find directional edge or score badly.
+
+### I thought I had a speed advantage
+
+For a stretch I was convinced the bot had an execution-speed edge — that polling faster and racing to fill ahead of the market consensus was real alpha. I cut the loop interval, tightened the order cycle, and ran it live. It lost money consistently.
+
+Polymarket is not HFT. The order book is thin, fills are slow, and any "speed advantage" I had was just me paying the spread to get into positions slightly before they were correctly priced — which the rest of the market then immediately fixed for free. Speed didn't help because there was no speed-sensitive edge to capture; the edge was in being *right*, not in being *first*. I rolled back the polling cadence and the cycle aggressiveness, and the P&L recovered.
+
+### The bot was gambling
+
+The worst stretch was watching the dashboard show the bot opening positions on brackets where, by my own model, the edge was effectively zero. The minimum-edge threshold had been a tunable parameter, and at some point the optimizer had quietly driven it to zero on the in-sample data — because in the simulator, with perfectly modeled spreads and no real adverse selection, a tiny edge multiplied by Kelly sizing was still net-positive on average.
+
+Live, of course, that's gambling. Any noise in the model — and there's plenty — will get you randomly long every bracket on every market, churning capital and bleeding through spread and slippage. I locked the floor: minimum edge can no longer optimize below a hard threshold, the abandonment criterion got tightened so borderline positions get cut early instead of riding noise, and the per-bracket cap got more aggressive so even if a stupid position slips through, it can't grow into a real loss.
+
+The pattern across all three of these is the same: the optimizer is a relentless minimizer of fitness, and if your fitness function has *any* loophole, it will find it before you do. Most of the constraints in this system aren't there to make money — they're there to stop the bot from making money in ways I don't trust.
+
+## Backtester & Optimizer
+
+Historical resolution data feeds a tick-level simulator with realistic spread, price impact, and settlement. Strategy parameters are tuned by a Bayesian optimizer over a layered fitness function combining P&L, profit factor, Sortino, drawdown, win rate, and per-trade efficiency — designed multiplicatively so that no strategy can optimize away one weakness at the cost of another.
+
+To prevent overfitting on lucky fold compositions, the optimizer:
+
+- Uses fresh capital per market — wipeouts and lucky streaks no longer dominate the score through compounding
+- Re-randomizes folds on every evaluation and averages across multiple samples per fold
+- Aggregates as `0.6 × worst-fold + 0.4 × mean-fold`, so a strategy must generalize across all subsets, not just spike on one
+- Re-evaluates every new "best" on a fresh fold seed and overwrites unstable peaks in-place inside the GP's training set, so the surrogate model learns to distrust outliers instead of chasing them
+- Holds out a small set of markets the optimizer never sees during search — the IS-vs-OOS gap on the holdout is the final truth-test
+
+Each of these came out of a specific case where an earlier version of the optimizer found a strategy that looked great on aggregate but was secretly dependent on a single lucky market, a single lucky fold composition, or a compounding artifact. The fitness function and the fold logic are now closer to a mistrust framework than an optimization framework.
 
 ## Infrastructure
 
-- **FastAPI** backend handles scheduling, strategy execution, and serves the dashboard API
-- **APScheduler** triggers the ingestion and trading loop on a weekly cadence aligned to market resolution times
-- **Next.js** dashboard shows live positions, historical trades, P&L curve, and current forecast distribution
-- **Railway** provides continuous deployment via GitHub Actions with environment variable injection for API keys
+- **Flask** backend serves predictions, recommendations, portfolio state, and trade history to the dashboard and any external monitoring
+- **APScheduler** drives the data + trading loop on a 30-second cadence aligned to market resolution times
+- **Next.js** dashboard renders live positions, ensemble projections, market consensus comparison, per-bracket edge, and signal breakdowns
+- **Railway** handles continuous deployment from GitHub, environment variable injection, and a persistent volume for the SQLite database
+- **Paper / live mode toggle** controlled by a single env var — same execution path, different broker
+
+## Disclaimer
+
+This is research software. Paper trading is the default. Live trading prediction markets involves real financial risk and can result in total loss of capital.
