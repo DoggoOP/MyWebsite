@@ -1,12 +1,14 @@
 import './PointCloudViewer.css';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
+import { Airflow, type FlowMode } from './airflow';
 
 interface PointCloudViewerProps {
   src: string;
   className?: string;
   filter?: boolean;
+  airflow?: boolean;
 }
 
 interface Annotation {
@@ -54,18 +56,13 @@ function parseLssnap(buffer: ArrayBuffer): LssnapData {
   return { vertexCount, positions, colors, annotations };
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / 1048576).toFixed(1) + ' MB';
-}
-
-export default function PointCloudViewer({ src, className, filter = true }: PointCloudViewerProps) {
+export default function PointCloudViewer({ src, className, filter = true, airflow = false }: PointCloudViewerProps) {
+  const [flowMode, setFlowMode] = useState<FlowMode>('pressure');
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<{
     renderer?: THREE.WebGLRenderer;
     animId?: number;
-    material?: THREE.PointsMaterial;
+    material?: THREE.ShaderMaterial;
     controls?: TrackballControls;
     autoRotating: boolean;
     initialPos?: THREE.Vector3;
@@ -73,20 +70,34 @@ export default function PointCloudViewer({ src, className, filter = true }: Poin
     scene?: THREE.Scene;
     camera?: THREE.PerspectiveCamera;
     darkBg: boolean;
-  }>({ darkBg: false, autoRotating: true });
+  }>({ darkBg: false, autoRotating: false });
 
-  const statVertsRef = useRef<HTMLSpanElement>(null);
-  const statAnnotsRef = useRef<HTMLSpanElement>(null);
-  const statSizeRef = useRef<HTMLSpanElement>(null);
   const statusRef = useRef<HTMLDivElement>(null);
   const uiRef = useRef<HTMLDivElement>(null);
   const autoRotateBtnRef = useRef<HTMLButtonElement>(null);
   const bgBtnRef = useRef<HTMLButtonElement>(null);
+  const flowControlRef = useRef<Airflow | null>(null);
+  const flowSpeedRef = useRef(1);
+  const flowDirectionRef = useRef<1 | -1>(1);
+  const speedReadoutRef = useRef<HTMLOutputElement>(null);
+  const directionBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!mountRef.current) return;
     const container = mountRef.current;
     const s = stateRef.current;
+    const flowCanvas = airflow ? document.getElementById('flow-canvas') as HTMLCanvasElement | null : null;
+    const flow = flowCanvas ? new Airflow(flowCanvas) : null;
+    flowControlRef.current = flow;
+    flow?.setFlow(flowSpeedRef.current, flowDirectionRef.current);
+    let modelPositions: Float32Array | null = null;
+    let frame = 0;
+    let lastFlow = 0;
+    const card = document.getElementById('bio-card');
+    const onPointerMove = (event: PointerEvent) => flow?.pointerMove(event.clientX, event.clientY);
+    const onPointerOut = (event: PointerEvent) => { if (!event.relatedTarget) flow?.pointerLeave(); };
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerout', onPointerOut);
 
     const scene = new THREE.Scene();
     scene.background = null;
@@ -113,18 +124,24 @@ export default function PointCloudViewer({ src, className, filter = true }: Poin
 
     const animate = () => {
       s.animId = requestAnimationFrame(animate);
-      // Manual auto-rotate around Y axis
+      // Z is the scan's up axis, so optional rotation stays upright.
       if (s.autoRotating && s.camera && s.controls) {
         const target = s.controls.target;
         const pos = s.camera.position;
         const dx = pos.x - target.x;
-        const dz = pos.z - target.z;
-        const angle = 0.0005;
+        const dy = pos.y - target.y;
+        const angle = 0.0008;
         const cos = Math.cos(angle), sin = Math.sin(angle);
-        s.camera.position.x = target.x + dx * cos - dz * sin;
-        s.camera.position.z = target.z + dx * sin + dz * cos;
+        s.camera.position.x = target.x + dx * cos - dy * sin;
+        s.camera.position.y = target.y + dx * sin + dy * cos;
       }
       controls.update();
+      if (flow && performance.now() - lastFlow > 30) {
+        if (++frame % 6 === 0) flow.updateObstacles(modelPositions, camera,
+          container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
+        flow.step();
+        lastFlow = performance.now();
+      }
       renderer.render(scene, camera);
     };
     animate();
@@ -135,22 +152,25 @@ export default function PointCloudViewer({ src, className, filter = true }: Poin
       camera.updateProjectionMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
       controls.handleResize();
+      flow?.resize();
+      flow?.updateObstacles(modelPositions, camera, container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
     };
     window.addEventListener('resize', onResize);
 
-    let byteLength = 0;
-    fetch(src)
-      .then(r => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        byteLength = parseInt(r.headers.get('content-length') || '0');
-        return r.arrayBuffer();
+    Promise.all([fetch(src), fetch('/assets/3dImage-surfels.bin')])
+      .then(async ([scanResponse, axesResponse]) => {
+        if (!scanResponse.ok || !axesResponse.ok) throw new Error('Scan asset could not be loaded');
+        return [await scanResponse.arrayBuffer(), await axesResponse.arrayBuffer()] as const;
       })
-      .then(buffer => {
-        byteLength = byteLength || buffer.byteLength;
+      .then(([buffer, axesBuffer]) => {
         const data = parseLssnap(buffer);
+        const axisCount = new DataView(axesBuffer).getUint32(0, true);
+        if (axisCount !== data.vertexCount) throw new Error('Scan and splat geometry do not match');
+        const packedAxes = new Int16Array(axesBuffer, 4);
 
         let finalPositions: Float32Array;
         let finalColors: Float32Array;
+        let selectedIndices: number[] | null = null;
 
         if (filter) {
           // ── Filter to right-side person (highlighted quadrant) ──────────────
@@ -164,16 +184,17 @@ export default function PointCloudViewer({ src, className, filter = true }: Poin
           fullBox.getSize(fullSize);
 
           const xCut = fullCenter.x;
-          const zCut = fullBox.min.z + fullSize.z * 0.75;
           const yCutMax = fullBox.min.y + fullSize.y * 0.5;
           const filtPos: number[] = [], filtCol: number[] = [];
+          selectedIndices = [];
           for (let vi = 0; vi < data.vertexCount; vi++) {
             const x = data.positions[vi*3];
             const y = data.positions[vi*3+1];
             const z = data.positions[vi*3+2];
-            if (x >= xCut && z <= zCut && y >= yCutMax) {
+            if (x >= xCut && y >= yCutMax) {
               filtPos.push(x, y, z);
               filtCol.push(data.colors[vi*3], data.colors[vi*3+1], data.colors[vi*3+2]);
+              selectedIndices.push(vi);
             }
           }
           finalPositions = new Float32Array(filtPos);
@@ -182,27 +203,91 @@ export default function PointCloudViewer({ src, className, filter = true }: Poin
           finalPositions = data.positions;
           finalColors    = data.colors;
         }
+        modelPositions = finalPositions;
 
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.BufferAttribute(finalPositions, 3));
-        geo.setAttribute('color',    new THREE.BufferAttribute(finalColors, 3));
-        const mat = new THREE.PointsMaterial({ size: 3, vertexColors: true, sizeAttenuation: false });
+        const count = finalPositions.length / 3;
+        const axisA = new Float32Array(count * 3);
+        const axisB = new Float32Array(count * 3);
+        for (let vi = 0; vi < count; vi++) {
+          const original = selectedIndices ? selectedIndices[vi] : vi;
+          for (let component = 0; component < 3; component++) {
+            axisA[vi * 3 + component] = packedAxes[original * 6 + component] / 10000;
+            axisB[vi * 3 + component] = packedAxes[original * 6 + component + 3] / 10000;
+          }
+        }
+        const geo = new THREE.InstancedBufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute([
+          -1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0,
+        ], 3));
+        geo.setIndex([0, 1, 2, 0, 2, 3]);
+        geo.setAttribute('instanceCenter', new THREE.InstancedBufferAttribute(finalPositions, 3));
+        geo.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(finalColors, 3));
+        geo.setAttribute('instanceAxisA', new THREE.InstancedBufferAttribute(axisA, 3));
+        geo.setAttribute('instanceAxisB', new THREE.InstancedBufferAttribute(axisB, 3));
+        geo.instanceCount = count;
+        // PCA tangent axes form geometric ellipses. Their projection changes with the camera.
+        const mat = new THREE.ShaderMaterial({
+          uniforms: { uSplatSize: { value: 0.6 } },
+          vertexShader: `
+            attribute vec3 instanceCenter;
+            attribute vec3 instanceColor;
+            attribute vec3 instanceAxisA;
+            attribute vec3 instanceAxisB;
+            varying vec3 vColor;
+            varying vec2 vLocal;
+            varying float vFacing;
+            uniform float uSplatSize;
+            void main() {
+              vColor = instanceColor;
+              vLocal = position.xy;
+              vec3 normal = normalize(cross(instanceAxisA, instanceAxisB));
+              vFacing = abs(dot(normal, normalize(cameraPosition - instanceCenter)));
+              vec3 splatPosition = instanceCenter
+                + uSplatSize * (instanceAxisA * position.x + instanceAxisB * position.y);
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(splatPosition, 1.0);
+            }
+          `,
+          fragmentShader: `
+            varying vec3 vColor;
+            varying vec2 vLocal;
+            varying float vFacing;
+            void main() {
+              float radius2 = dot(vLocal, vLocal);
+              float alpha = exp(-radius2 * 2.4) * 0.62;
+              alpha *= mix(0.82, 1.0, smoothstep(0.05, 0.45, vFacing));
+              if (alpha < 0.045) discard;
+              gl_FragColor = vec4(vColor, alpha);
+            }
+          `,
+          transparent: true,
+          depthTest: true,
+          depthWrite: false,
+          blending: THREE.NormalBlending,
+          side: THREE.DoubleSide,
+        });
         s.material = mat;
-        const pc = new THREE.Points(geo, mat);
+        const pc = new THREE.Mesh(geo, mat);
+        pc.frustumCulled = false;
         scene.add(pc);
 
-        geo.computeBoundingBox();
-        const box = geo.boundingBox!;
+        const bounds = new THREE.BufferGeometry();
+        bounds.setAttribute('position', new THREE.BufferAttribute(finalPositions, 3));
+        bounds.computeBoundingBox();
+        const box = bounds.boundingBox!;
         const center = new THREE.Vector3();
         box.getCenter(center);
         const size = new THREE.Vector3();
         box.getSize(size);
         const maxDim = Math.max(size.x, size.y, size.z);
-        controls.target.copy(center);
+        controls.target.set(center.x, center.y, center.z + maxDim * 0.08);
         camera.up.set(0, 0, 1);
-        camera.position.set(center.x - maxDim * 0.5, center.y - maxDim * 2.8, center.z);
-        camera.lookAt(center);
+        // A raised near-frontal camera accounts for the scan's leaning pose.
+        camera.position.set(center.x - maxDim * 0.12, center.y - maxDim * 1.85, center.z + maxDim * 1.58);
+        camera.filmOffset = -8;
+        camera.updateProjectionMatrix();
+        camera.lookAt(controls.target);
         controls.update();
+        flow?.updateObstacles(modelPositions, camera, container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
         s.initialPos = camera.position.clone();
         s.initialTarget = controls.target.clone();
 
@@ -247,9 +332,6 @@ export default function PointCloudViewer({ src, className, filter = true }: Poin
         }
         scene.add(annGroup);
 
-        if (statVertsRef.current) statVertsRef.current.textContent = data.vertexCount.toLocaleString();
-        if (statAnnotsRef.current) statAnnotsRef.current.textContent = String(data.annotations.length);
-        if (statSizeRef.current) statSizeRef.current.textContent = formatBytes(byteLength);
         if (statusRef.current) statusRef.current.style.display = 'none';
         if (uiRef.current) uiRef.current.style.display = 'flex';
       })
@@ -259,21 +341,24 @@ export default function PointCloudViewer({ src, className, filter = true }: Poin
 
     return () => {
       window.removeEventListener('resize', onResize);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerout', onPointerOut);
+      flowControlRef.current = null;
       if (s.animId) cancelAnimationFrame(s.animId);
       controls.dispose();
       renderer.dispose();
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
-  }, [src, filter]);
+  }, [src, filter, airflow]);
 
   const handlePointSize = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (stateRef.current.material) stateRef.current.material.size = parseFloat(e.target.value);
+    if (stateRef.current.material) stateRef.current.material.uniforms.uSplatSize.value = parseFloat(e.target.value);
   };
 
   const handleBgToggle = () => {
     const s = stateRef.current;
     s.darkBg = !s.darkBg;
-    if (s.scene) s.scene.background = s.darkBg ? new THREE.Color(0x0a0a0f) : null;
+    if (s.scene) s.scene.background = s.darkBg ? new THREE.Color(0x101a20) : null;
     if (bgBtnRef.current) bgBtnRef.current.textContent = s.darkBg ? 'Clear' : 'Dark';
   };
 
@@ -293,25 +378,49 @@ export default function PointCloudViewer({ src, className, filter = true }: Poin
       autoRotateBtnRef.current.textContent = 'Auto-Rotate: ' + (s.autoRotating ? 'ON' : 'OFF');
   };
 
+  const handleFlowSpeed = (event: React.ChangeEvent<HTMLInputElement>) => {
+    flowSpeedRef.current = Number(event.target.value);
+    flowControlRef.current?.setFlow(flowSpeedRef.current, flowDirectionRef.current);
+    if (speedReadoutRef.current) speedReadoutRef.current.value = `${flowSpeedRef.current.toFixed(1)}×`;
+  };
+
+  const handleFlowDirection = () => {
+    flowDirectionRef.current = flowDirectionRef.current === 1 ? -1 : 1;
+    flowControlRef.current?.setFlow(flowSpeedRef.current, flowDirectionRef.current);
+    if (directionBtnRef.current) directionBtnRef.current.textContent = `Flow ${flowDirectionRef.current === 1 ? '→' : '←'}`;
+  };
+
+  const handleFlowMode = (mode: FlowMode) => {
+    setFlowMode(mode);
+    flowControlRef.current?.setMode(mode);
+    const name = document.getElementById('flow-key-mode');
+    const low = document.getElementById('flow-key-low');
+    const high = document.getElementById('flow-key-high');
+    if (name) name.textContent = mode === 'pressure' ? 'Projection pressure' : mode === 'vorticity' ? 'Vorticity' : 'Flow speed';
+    if (low) low.textContent = mode === 'vorticity' ? 'CW' : mode === 'speed' ? 'slow' : 'low';
+    if (high) high.textContent = mode === 'vorticity' ? 'CCW' : mode === 'speed' ? 'fast' : 'high';
+  };
+
   return (
     <div className={`pcv-wrapper ${className || ''}`}>
       <div ref={mountRef} className="pcv-canvas" />
       <div ref={statusRef} className="pcv-status">Loading point cloud…</div>
-      <div className="pcv-stats">
-        <span className="pcv-stats-title">Ethan Kong · 3D Scan</span>
-        <span className="pcv-stats-row">
-          <span ref={statVertsRef}>—</span> verts &nbsp;·&nbsp;
-          <span ref={statAnnotsRef}>—</span> annotations &nbsp;·&nbsp;
-          <span ref={statSizeRef}>—</span>
-        </span>
-        <span className="pcv-stats-hint">Drag · Scroll · Right-drag to pan</span>
-      </div>
       <div ref={uiRef} className="pcv-controls" style={{ display: 'none' }}>
-        <label className="pcv-label">Point Size</label>
-        <input type="range" min="1" max="5" step="0.5" defaultValue="3" onChange={handlePointSize} className="pcv-slider" />
+        {airflow && <label className="pcv-flow-speed">Air speed
+          <input type="range" min="0.4" max="2" step="0.1" defaultValue="1" onChange={handleFlowSpeed} aria-label="Airflow speed" />
+          <output ref={speedReadoutRef}>1.0×</output>
+        </label>}
+        {airflow && <button onClick={handleFlowDirection} ref={directionBtnRef} className="pcv-btn" aria-label="Reverse airflow direction">Flow →</button>}
+        {airflow && <div className="pcv-flow-modes" role="group" aria-label="Flow visualization">
+          {(['pressure', 'vorticity', 'speed'] as FlowMode[]).map(mode =>
+            <button key={mode} className={`pcv-btn ${flowMode === mode ? 'is-active' : ''}`} aria-pressed={flowMode === mode} onClick={() => handleFlowMode(mode)}>{mode === 'pressure' ? 'Pressure' : mode === 'vorticity' ? 'Vorticity' : 'Speed'}</button>
+          )}
+        </div>}
+        <label className="pcv-label">Surfel Size</label>
+        <input type="range" min="0.15" max="0.9" step="0.05" defaultValue="0.6" onChange={handlePointSize} className="pcv-slider" aria-label="Surfel footprint size" />
         <button onClick={handleBgToggle} ref={bgBtnRef} className="pcv-btn">Dark Bg</button>
         <button onClick={handleReset} className="pcv-btn">Reset</button>
-        <button onClick={handleAutoRotate} ref={autoRotateBtnRef} className="pcv-btn">Auto-Rotate: ON</button>
+        <button onClick={handleAutoRotate} ref={autoRotateBtnRef} className="pcv-btn">Auto-Rotate: OFF</button>
       </div>
     </div>
   );

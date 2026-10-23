@@ -29,9 +29,6 @@ const projects = allProjects.sort((a, b) => a.data.order - b.data.order);
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Ethan Kong — Aerospace Engineer & Developer" />
     <title>{title}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <ViewTransitions />
   </head>
@@ -91,7 +88,7 @@ const projects = allProjects.sort((a, b) => a.data.order - b.data.order);
   .projects-backdrop {
     position: fixed; inset: 0; z-index: 200;
     background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(4px);
+    backdrop-filter: none;
     opacity: 0; pointer-events: none;
     transition: opacity 0.3s ease;
   }
@@ -100,9 +97,9 @@ const projects = allProjects.sort((a, b) => a.data.order - b.data.order);
   .projects-overlay {
     position: fixed; top: 0; right: 0; z-index: 201;
     width: 420px; height: 100vh;
-    background: rgba(8,8,18,0.97);
+    background: #14242b;
     border-left: 1px solid var(--border-subtle);
-    backdrop-filter: blur(20px);
+    backdrop-filter: none;
     display: flex; flex-direction: column;
     transform: translateX(100%);
     transition: transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94);
@@ -139,7 +136,7 @@ const projects = allProjects.sort((a, b) => a.data.order - b.data.order);
     transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
   .overlay-item:hover {
-    background: rgba(0,212,255,0.05);
+    background: rgba(162,201,203,0.05);
     border-left-color: var(--accent-cyan);
     color: var(--text-primary);
   }

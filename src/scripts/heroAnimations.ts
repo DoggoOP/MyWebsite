@@ -1,5 +1,5 @@
 export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () => void {
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d')!;
   if (!ctx) return () => {};
 
   let _rafId = -1;
@@ -21,7 +21,6 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
     'sailing-rl': animateCFD,
     'solar-car': animateSolarCar,
     '3d-plane': animatePlane,
-    'skrunners': animateDelivery,
     'light-switch': animateCircuit,
     'rocketry': animateRocket,
     'polymarket': animateCandlestick,
@@ -38,15 +37,15 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
   function animateLattice() {
     const particles = Array.from({ length: 600 }, () => ({
       x: Math.random() * W(), y: Math.random() * H(), z: Math.random(),
-      r: Math.floor(Math.random() * 80 + 120),
-      g: Math.floor(Math.random() * 80 + 140),
-      b: Math.floor(Math.random() * 150 + 100),
+      r: Math.floor(Math.random() * 45 + 125),
+      g: Math.floor(Math.random() * 55 + 165),
+      b: Math.floor(Math.random() * 45 + 165),
       vx: (Math.random() - 0.5) * 0.3,
       vy: (Math.random() - 0.5) * 0.3,
     }));
     let t = 0;
     const draw = () => {
-      ctx.fillStyle = 'rgba(5,5,10,0.15)';
+      ctx.fillStyle = 'rgba(13,25,31,0.15)';
       ctx.fillRect(0, 0, W(), H());
       t += 0.005;
       for (const p of particles) {
@@ -82,7 +81,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
     const draw = () => {
       frame++;
       if (frame % 2 === 0) spawn();
-      ctx.fillStyle = 'rgba(5,5,15,0.25)';
+      ctx.fillStyle = 'rgba(13,25,31,0.25)';
       ctx.fillRect(0, 0, W(), H());
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
@@ -91,15 +90,12 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
         const t = p.life / p.maxLife;
         const alpha = (1 - t) * 0.8;
         const size = (1 - t) * 8 + 1;
-        const r = Math.floor(80 + (1 - t) * 175);
-        const g = Math.floor(t < 0.5 ? 200 + t * 55 : 255 - (t - 0.5) * 200);
-        const b = 255;
-        ctx.shadowBlur = 12; ctx.shadowColor = `rgba(${r},${g},${b},0.6)`;
+        const r = 150, g = 191, b = 191;
         ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
         ctx.beginPath(); ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.shadowBlur = 0;
+
       _rafId = requestAnimationFrame(draw);
     };
     draw();
@@ -114,7 +110,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
     }));
     let t = 0;
     const draw = () => {
-      ctx.fillStyle = 'rgba(5,8,18,0.12)';
+      ctx.fillStyle = 'rgba(13,25,31,0.12)';
       ctx.fillRect(0, 0, W(), H());
       t += 0.01;
       for (const line of lines) {
@@ -128,7 +124,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
           const y = line.y + wave + deflect;
           x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         }
-        ctx.strokeStyle = `rgba(0,${Math.floor(180 + line.speed * 40)},${Math.floor(200 + line.speed * 55)},0.35)`;
+        ctx.strokeStyle = `rgba(130,190,192,0.35)`;
         ctx.lineWidth = 1;
         ctx.stroke();
       }
@@ -151,29 +147,23 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
       ctx.lineTo(x + 160, y + 10);
       ctx.lineTo(x, y + 10);
       ctx.closePath();
-      ctx.fillStyle = 'rgba(0,212,255,0.7)';
+      ctx.fillStyle = 'rgba(130,190,192,0.7)';
       ctx.fill();
-      ctx.fillStyle = 'rgba(123,47,247,0.6)';
+      ctx.fillStyle = 'rgba(129,153,156,0.6)';
       ctx.fillRect(x + 78, y - 16, 49, 10);
       ctx.fillStyle = 'rgba(200,200,220,0.5)';
       ctx.beginPath(); ctx.arc(x + 35, y + 14, 12, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(x + 125, y + 14, 12, 0, Math.PI * 2); ctx.fill();
     };
     const drawGround = () => {
-      const grad = ctx.createLinearGradient(0, H() * 0.65, 0, H());
-      grad.addColorStop(0, 'rgba(20,20,35,0.8)');
-      grad.addColorStop(1, 'rgba(5,5,15,0)');
-      ctx.fillStyle = grad;
+      ctx.fillStyle = 'rgba(26,43,49,0.7)';
       ctx.fillRect(0, H() * 0.65 + 26, W(), H());
     };
     const draw = () => {
-      ctx.fillStyle = 'rgba(5,5,15,0.2)';
+      ctx.fillStyle = 'rgba(13,25,31,0.2)';
       ctx.fillRect(0, 0, W(), H());
       drawGround();
-      const grad = ctx.createLinearGradient(carX - 80, 0, carX, 0);
-      grad.addColorStop(0, 'rgba(0,212,255,0)');
-      grad.addColorStop(1, 'rgba(0,212,255,0.08)');
-      ctx.fillStyle = grad;
+      ctx.fillStyle = 'rgba(130,190,192,0.06)';
       ctx.fillRect(carX - 80, carY - 20, 80, 50);
       drawCar(carX, carY);
       carX += 1.2;
@@ -191,7 +181,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(tilt);
-      ctx.fillStyle = 'rgba(180,210,255,0.85)';
+      ctx.fillStyle = 'rgba(185,208,207,0.85)';
       ctx.beginPath();
       ctx.moveTo(-60, -5); ctx.lineTo(60, -5);
       ctx.lineTo(70, 0); ctx.lineTo(60, 5);
@@ -213,7 +203,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
     };
     let t = 0;
     const draw = () => {
-      ctx.fillStyle = 'rgba(5,5,15,0.15)';
+      ctx.fillStyle = 'rgba(13,25,31,0.15)';
       ctx.fillRect(0, 0, W(), H());
       t += 0.02;
       targetY = H() * 0.4 + Math.sin(t * 0.7) * H() * 0.15;
@@ -221,7 +211,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
       vy *= 0.95;
       planeY += vy;
       const tilt = vy * 0.015;
-      ctx.strokeStyle = 'rgba(200,220,255,0.15)';
+      ctx.strokeStyle = 'rgba(185,208,207,0.15)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(planeX - 60, planeY);
@@ -230,59 +220,6 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
       drawPlane(planeX, planeY, tilt);
       planeX += 1.5;
       if (planeX > W() + 150) planeX = -150;
-      _rafId = requestAnimationFrame(draw);
-    };
-    draw();
-  }
-
-  function animateDelivery() {
-    const drawCity = () => {
-      ctx.strokeStyle = 'rgba(0,212,255,0.08)';
-      ctx.lineWidth = 1;
-      for (let x = 0; x < W(); x += 60) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H()); ctx.stroke();
-      }
-      for (let y = 0; y < H(); y += 60) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W(), y); ctx.stroke();
-      }
-    };
-    const waypoints = [
-      { x: W() * 0.1, y: H() * 0.8 },
-      { x: W() * 0.3, y: H() * 0.8 },
-      { x: W() * 0.3, y: H() * 0.4 },
-      { x: W() * 0.6, y: H() * 0.4 },
-      { x: W() * 0.6, y: H() * 0.6 },
-      { x: W() * 0.8, y: H() * 0.6 },
-    ];
-    let progress = 0;
-    const draw = () => {
-      ctx.fillStyle = 'rgba(5,8,18,0.2)';
-      ctx.fillRect(0, 0, W(), H());
-      drawCity();
-      progress = (progress + 0.003) % 1;
-      const totalPoints = waypoints.length - 1;
-      const seg = Math.floor(progress * totalPoints);
-      const t = (progress * totalPoints) % 1;
-      const from = waypoints[Math.min(seg, waypoints.length - 1)];
-      const to = waypoints[Math.min(seg + 1, waypoints.length - 1)];
-      const rx = from.x + (to.x - from.x) * t;
-      const ry = from.y + (to.y - from.y) * t;
-      ctx.strokeStyle = 'rgba(0,212,255,0.5)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
-      ctx.beginPath();
-      ctx.moveTo(waypoints[0].x, waypoints[0].y);
-      for (const wp of waypoints.slice(1)) ctx.lineTo(wp.x, wp.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(0,255,170,0.9)';
-      ctx.shadowBlur = 12; ctx.shadowColor = '#00ffaa';
-      ctx.beginPath(); ctx.arc(rx, ry, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0;
-      for (const wp of [waypoints[0], waypoints[waypoints.length - 1]]) {
-        ctx.fillStyle = 'rgba(123,47,247,0.7)';
-        ctx.beginPath(); ctx.arc(wp.x, wp.y, 5, 0, Math.PI * 2); ctx.fill();
-      }
       _rafId = requestAnimationFrame(draw);
     };
     draw();
@@ -299,10 +236,10 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
       pulses.push({ edge: Math.floor(Math.random() * edges.length), t: 0, speed: 0.015 + Math.random() * 0.01 });
     }, 300);
     const draw = () => {
-      ctx.fillStyle = 'rgba(5,5,15,0.2)';
+      ctx.fillStyle = 'rgba(13,25,31,0.2)';
       ctx.fillRect(0, 0, W(), H());
       for (const [a, b] of edges) {
-        ctx.strokeStyle = 'rgba(0,212,255,0.15)';
+        ctx.strokeStyle = 'rgba(130,190,192,0.15)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(nodes[a].x, nodes[a].y);
@@ -310,7 +247,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
         ctx.stroke();
       }
       for (const n of nodes) {
-        ctx.fillStyle = 'rgba(0,212,255,0.4)';
+        ctx.fillStyle = 'rgba(130,190,192,0.4)';
         ctx.beginPath(); ctx.arc(n.x, n.y, 4, 0, Math.PI * 2); ctx.fill();
       }
       for (let i = pulses.length - 1; i >= 0; i--) {
@@ -320,10 +257,10 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
         const [a, b] = edges[p.edge];
         const px = nodes[a].x + (nodes[b].x - nodes[a].x) * p.t;
         const py = nodes[a].y + (nodes[b].y - nodes[a].y) * p.t;
-        ctx.fillStyle = 'rgba(0,255,170,0.9)';
-        ctx.shadowBlur = 10; ctx.shadowColor = '#00ffaa';
+        ctx.fillStyle = 'rgba(153,190,169,0.9)';
+
         ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
-        ctx.shadowBlur = 0;
+
       }
       _rafId = requestAnimationFrame(draw);
     };
@@ -337,11 +274,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
       for (let i = 0; i < 5; i++) {
         const spread = (Math.random() - 0.5) * 30;
         const length = 20 + Math.random() * 40;
-        const grad = ctx.createLinearGradient(x + spread * 0.2, y, x + spread, y + length);
-        grad.addColorStop(0, 'rgba(255,220,80,0.8)');
-        grad.addColorStop(0.5, 'rgba(255,100,20,0.4)');
-        grad.addColorStop(1, 'rgba(123,47,247,0)');
-        ctx.strokeStyle = grad;
+        ctx.strokeStyle = 'rgba(213,167,117,0.55)';
         ctx.lineWidth = 2 + Math.random() * 3;
         ctx.beginPath();
         ctx.moveTo(x, y);
@@ -350,7 +283,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
       }
     };
     const drawRocket = (x: number, y: number) => {
-      ctx.fillStyle = 'rgba(200,210,255,0.9)';
+      ctx.fillStyle = 'rgba(185,208,207,0.9)';
       ctx.beginPath();
       ctx.moveTo(x, y - 40); ctx.lineTo(x - 10, y); ctx.lineTo(x + 10, y);
       ctx.closePath(); ctx.fill();
@@ -362,7 +295,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
       ctx.closePath(); ctx.fill();
     };
     const draw = () => {
-      ctx.fillStyle = 'rgba(5,5,15,0.2)';
+      ctx.fillStyle = 'rgba(13,25,31,0.2)';
       ctx.fillRect(0, 0, W(), H());
       vy -= 0.003;
       rocketY += vy;
@@ -394,9 +327,9 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
     const draw = () => {
       frame++;
       if (frame % 45 === 0) addCandle();
-      ctx.fillStyle = 'rgba(5,8,18,0.25)';
+      ctx.fillStyle = 'rgba(13,25,31,0.25)';
       ctx.fillRect(0, 0, W(), H());
-      ctx.strokeStyle = 'rgba(0,212,255,0.06)';
+      ctx.strokeStyle = 'rgba(130,190,192,0.06)';
       ctx.lineWidth = 1;
       for (let i = 1; i < 5; i++) {
         const y = H() * 0.1 + (H() * 0.8 / 5) * i;
@@ -408,7 +341,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
         const c = candles[i];
         const x = i * cw + cw / 2;
         const isUp = c.close >= c.open;
-        const color = isUp ? 'rgba(0,255,170,0.8)' : 'rgba(255,70,90,0.8)';
+        const color = isUp ? 'rgba(153,190,169,0.8)' : 'rgba(200,151,130,0.8)';
         ctx.strokeStyle = color; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, toY(c.high)); ctx.lineTo(x, toY(c.low)); ctx.stroke();
         ctx.fillStyle = color;
@@ -416,13 +349,13 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
         const bodyH = Math.max(2, Math.abs(toY(c.open) - toY(c.close)));
         ctx.fillRect(x - cw * 0.3, top, cw * 0.6, bodyH);
       }
-      ctx.strokeStyle = 'rgba(0,212,255,0.5)';
+      ctx.strokeStyle = 'rgba(130,190,192,0.5)';
       ctx.setLineDash([4, 4]);
       ctx.lineWidth = 1;
       const py = toY(price);
       ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(W(), py); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(0,212,255,0.9)';
+      ctx.fillStyle = 'rgba(130,190,192,0.9)';
       ctx.font = '12px monospace';
       ctx.fillText(price.toFixed(3), W() - 55, py - 5);
       _rafId = requestAnimationFrame(draw);

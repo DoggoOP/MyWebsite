@@ -1,18 +1,18 @@
 ---
 title: Polymarket Trader Bot
-description: Autonomous trading system for Polymarket prediction markets — multi-source data ingestion, ensemble forecasting, edge-based execution, and a live monitoring dashboard deployed on Railway.
+description: Autonomous trading system for Polymarket prediction markets, with data ingestion, ensemble forecasting, execution, and a public performance dashboard.
 tagline: Autonomous prediction market trading
 animation: polymarket
 date: "2025-10-01"
 tags: [python, flask, nextjs, sqlite, trading, railway, bayesian-optimization]
 order: 3
 links:
-  Dashboard: https://polymarketdashboard-production.up.railway.app/
+  demo: https://polymarketdashboard-production.up.railway.app/
 ---
 
 ## Overview
 
-This bot autonomously trades Polymarket prediction markets, focusing on time-bounded markets with measurable underlying signals. It runs end-to-end on a Railway deployment: data collection, forecasting, edge calculation, order execution, and a live Next.js dashboard for monitoring positions, projections, and trade history in real time.
+This bot autonomously trades Polymarket prediction markets, focusing on time-bounded markets with measurable underlying signals. It runs end-to-end on a Railway deployment: data collection, forecasting, edge calculation, order execution, and a live Next.js dashboard. The public dashboard shows performance and bot health; positions and recommendations are private.
 
 More than anything, this project has been a long lesson in how easy it is to build something that *looks* profitable in a backtest but is actually doing something completely different than what I think it's doing. Most of the work hasn't been in the prediction model — it's been in catching the bot doing the wrong thing and then writing a constraint that prevents it from doing it again. The architecture below is what survived that process.
 
@@ -25,15 +25,7 @@ The system is built around four loosely coupled stages, each independently testa
 
 ## Live Dashboard
 
-The dashboard is publicly accessible and shows live ensemble projections, market consensus, per-bracket edge, and current positions across all open markets:
-
-<div style="position:relative; padding-bottom:62.5%; height:0; overflow:hidden; border-radius:8px; margin:24px 0; border: 1px solid rgba(120,140,200,0.15);">
-  <iframe
-    src="https://polymarketdashboard-production.up.railway.app/"
-    style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;"
-    loading="lazy"
-  />
-</div>
+The public performance dashboard appears beside the project summary above. It shows bot health, equity, profit and loss, and daily trade summaries.
 
 [polymarketdashboard-production.up.railway.app](https://polymarketdashboard-production.up.railway.app/)
 

@@ -1,32 +1,89 @@
 ---
 title: Solar Car
-description: Aerodynamics engineering on the Stanford Solar Car Project — built a Railway-hosted Luminary Cloud CFD pipeline and designed a retractable twin-skin sail concept for crosswind power reduction.
-tagline: Aerodynamics engineering — Stanford Solar Car Project
+description: Automated CFD and solar-array analysis for Stanford Solar Car, alongside a retractable sail study that compares aerodynamic benefit with side-force, rolling, shading, and integration costs.
+tagline: AutoCFD, solar array optimization, and crosswind sail study
+coverImage: /assets/solar-sail-installed.png
 animation: solar-car
 date: "2025-09-01"
-tags: [cfd, aerodynamics, python, cloud, automation, solar, team]
+tags: [cfd, aerodynamics, python, solar, optimization, sail]
 order: 5
 links:
   github: https://github.com/DoggoOP/SolarCarLuminaryAutoCFD
 ---
 
-## Overview
+## Engineering work
 
-As Aerodynamics Engineer on the Stanford Solar Car Project, I work on reducing the drag and improving the crosswind handling of the team's American Solar Challenge race car. The core of my contribution is a cloud CFD automation pipeline that makes it fast and repeatable to evaluate aerodynamic geometry changes — replacing one-off manual solver runs with a standardized, logged workflow.
+I built **AutoCFD**, a pipeline that accepts a vehicle CAD file, sets up a Luminary Cloud simulation, monitors the run, and extracts drag, side force, lift, center of pressure, and convergence information. The application also logs results to Google Sheets so geometry and wind cases can be compared. The code includes farfield and mesh setup, optional rotating-wheel treatment, and a job dashboard. These are implemented workflow features, not claims that every simulation has been validated experimentally.
 
-## Luminary Cloud CFD Pipeline
+The same workflow can run **Shellpower**, a solar-array layout and simulation tool, on an exported car-body mesh. It places cells under a 6.0 m² target-area constraint, evaluates exposure and occlusion across sampled headings and race hours, and estimates peak power and daily energy. The current code supports a symmetric layout and an optional shadow-aware comparison run. I worked on bringing aerodynamic and solar estimates into one run because a sail can affect both drag and array shading.
 
-I built and deployed a web application on Railway that accepts a STEP file upload and automatically runs a standardized CFD analysis on [Luminary Cloud](https://luminarcloud.com/). Results — drag coefficient, lift, pressure distributions — are automatically logged to Google Sheets via the Google Cloud APIs, creating a persistent record of every run for easy comparison across design iterations.
+[AutoCFD source](https://github.com/DoggoOP/SolarCarLuminaryAutoCFD)
 
-This pipeline cuts the time from geometry change to results from hours of manual setup to a single file upload, and makes it accessible to the whole team without requiring individual CFD software licenses.
+## Adaptive retractable sail
 
-**GitHub:** [SolarCarLuminaryAutoCFD](https://github.com/DoggoOP/SolarCarLuminaryAutoCFD)
+This study tests a retractable, auto-cambering sail for crosswind energy harvesting. The proposed mechanism changes camber and trim when apparent wind is favorable and stows when the combined drag, rolling resistance, shading, and control costs exceed the aerodynamic benefit. The mechanism remains a design study. Deployment logic, durability, control power, and race integration still need validation.
 
-## Retractable Twin-Skin Sail Concept
+<div class="study-slides" aria-label="Solar sail study brief" tabIndex="0">
+  <section class="study-slide">
+    <span class="study-slide-number">01 / STUDY QUESTION</span>
+    <h3>When should the sail deploy?</h3>
+    <p>The control study must map apparent-wind speed and direction to a deploy or stow decision, a sail angle of attack, and a camber setting. Deployment only makes sense when useful aerodynamic force exceeds added rolling resistance, shading, actuator energy, and mechanism mass.</p>
+    <p class="study-slide-note">Current status: CAD concept and preliminary CFD comparison.</p>
+  </section>
+  <section class="study-slide">
+    <span class="study-slide-number">02 / WORKING WIND CASE</span>
+    <h3>Small apparent-wind angle</h3>
+    <div class="study-slide-metrics"><div><strong>26.79</strong><span>m/s relative wind</span></div><div><strong>4.54°</strong><span>apparent angle</span></div></div>
+    <p>The route scenario assumes a 3 m/s southeast wind for the first 40% to Alice Springs. It is an analysis input, not a verified forecast.</p>
+  </section>
+  <section class="study-slide">
+    <span class="study-slide-number">03 / PRELIMINARY FORCE RESULT</span>
+    <h3>Drag savings also add side load</h3>
+    <div class="study-slide-metrics"><div><strong>35.45</strong><span>N base net resistance</span></div><div><strong>15.24</strong><span>N AC75 net resistance</span></div></div>
+    <p>The AC75 case carries 375.86 N of side force. Net resistance includes the supplied added rolling resistance estimate. Matched runs and a verified tire model are still needed.</p>
+  </section>
+  <section class="study-slide">
+    <span class="study-slide-number">04 / GO OR NO-GO</span>
+    <h3>Control targets and production checks</h3>
+    <p>Measure lift and drag across angle of attack and camber, then choose settings for each apparent-wind case. The production decision also needs tire-load, roll-moment, shading, actuator, durability, and manufacturing checks.</p>
+    <p class="study-slide-note">The 0.88 kWh/day gain and 0.20 kWh/day loss are preliminary estimates.</p>
+  </section>
+</div>
+<p class="study-scroll-hint">Scroll sideways to read the four study slides.</p>
 
-In parallel, I modeled and prototyped a **retractable twin-skin sail** concept for the car's dorsal surface. The sail deploys a cambered airfoil profile when crosswinds are favorable, generating a side-force component that partially offsets the power cost of steering correction — reducing net crosswind power consumption. The sail retracts flush when not beneficial (e.g., headwind or tailwind conditions), preserving the car's baseline drag polar.
+<figure class="project-figure">
+  <img src="/assets/solar-sail-assembly.png" alt="CAD rendering of the retractable sail's mast, skins, gearing, and actuator assembly" />
+  <figcaption>Retractable sail assembly with internal actuation and geared trim.</figcaption>
+</figure>
 
-The concept involved:
-- Parametric aerosurface geometry in CAD
-- CFD evaluation of sail camber and angle-of-attack sweep across crosswind angles
-- Active control architecture for deploy/retract and trim angle based on real-time wind sensor input
+The second rendering above the page shows the sail installed in the rear bodywork. The concept uses a paired skin around a mast with a retraction and trim mechanism. The CAD images show packaging intent; they do not establish structural adequacy or a tested actuation cycle.
+
+## CFD and force comparison
+
+The Luminary visualization below shows surface results and flow paths for one car geometry. Its color scales represent skin-friction coefficient and turbulence intermittency. It should not be read as a validated prediction of race energy savings on its own.
+
+<figure class="project-figure">
+  <img src="/assets/solar-car-luminary-cfd.png" alt="Luminary Cloud CFD rendering of a solar car with surface-color contours and flow paths" />
+  <figcaption>Luminary Cloud result used during the crosswind analysis.</figcaption>
+</figure>
+
+The following comparison comes from a single preliminary working table. “Net resisting force” is the supplied drag estimate plus the supplied increase in rolling resistance. Negative drag means the aerodynamic force acts forward in that simulation. Cases and boundary conditions require a matched rerun before these differences can support a design decision.
+
+| Configuration | Drag (N) | Side force (N) | Added rolling resistance (N) | Net resisting force (N) | Change from base (N) |
+|:--|--:|--:|--:|--:|--:|
+| Base, 90° | 32.10 | 196.00 | 3.35 | 35.45 | 0.00 |
+| Fin mast | 14.89 | 299.00 | 7.80 | 22.69 | 12.76 lower |
+| Fat fin | -1.97 | 402.79 | 14.16 | 12.19 | 23.27 lower |
+| AC75 profile | 2.91 | 375.86 | 12.33 | 15.24 | 20.21 lower |
+| AC75 profile + jib | -6.65 | 493.39 | 21.24 | 14.59 | 20.87 lower |
+
+A separate set of notes lists different drag and side-force values for similarly named cases. I have kept those results out of this comparison until the run settings and reference forces are reconciled.
+
+## Working assumptions and decision checks
+
+One working route scenario assumes a 3 m/s southeast wind during the first 40% of the race to Alice Springs. The noted relative-wind vector is (-26.71, -2.12, 0) m/s, giving a magnitude of about 26.79 m/s and an angle of about 4.54°. This is a scenario for analysis, not a verified race forecast. The current energy estimate of **0.88 kWh/day gained** and **0.20 kWh/day lost** to shading and drag is also preliminary; its underlying wind frequency, electrical conversion, and deployment assumptions need a documented calculation.
+
+The sail also changes side force, tire load, and roll moment. The notes include a 260 kg vehicle mass, a 550 N maximum side-force case, and a reported center of pressure for one AC75 case at (-0.9, 0.41, 0.31) m relative to the center of the front wheels at ground level. Those inputs need a common coordinate frame and a tire-load model before a rollover or steering conclusion. The initial actuator estimate is 16.25 N·m of boom torque under a 130 N side load; gearing and holding-power claims still require a mechanical test.
+
+The next study needs a control map over apparent-wind speed and direction: when to deploy, what sail angle of attack to command, and how to adjust camber. Lift-to-drag ratio is one aerodynamic measure, but the useful objective for the car is net race energy after side-force rolling losses, shading, and actuator power. Lead-car anemometer data could supply a wind distribution for that calculation. Before production, the mechanism also needs repeatable trim and retraction tests, structural and fatigue checks, mass and packaging limits, and a failure-safe stowed state.
+

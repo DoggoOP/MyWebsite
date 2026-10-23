@@ -8,22 +8,24 @@ interface Props {
   date?: string;
   links?: { github?: string; paper?: string; demo?: string; };
   animation: string;
+  coverImage?: string;
+  order: number;
 }
 
-const { title, description, tags = [], date, links, animation } = Astro.props;
+const { title, description, tags = [], date, links, animation, coverImage, order } = Astro.props;
+const year = date ? new Date(`${date}T00:00:00`).getFullYear() : null;
 ---
 
 <BaseLayout title={`${title} — Ethan Kong`} showBack={true} backHref="/">
-  <div class="project-hero" data-animation={animation}>
-    <canvas id="hero-canvas" class="hero-canvas"></canvas>
-    <div class="hero-overlay">
-      <div class="hero-content">
-        <div class="hero-tags">
-          {tags.map(tag => <span class="tag">{tag}</span>)}
-        </div>
-        <h1 class="hero-title">{title}</h1>
-        <p class="hero-desc">{description}</p>
-        <div class="hero-links">
+  <header class="project-hero" data-animation={animation}>
+    <div class="hero-content">
+      <div class="hero-index"><span>Project log / {String(order).padStart(2, '0')}</span><span>{year}</span></div>
+      <div class="hero-tags">
+        {tags.slice(0, 4).map(tag => <span class="tag">{tag}</span>)}
+      </div>
+      <h1 class="hero-title">{title}</h1>
+      <p class="hero-desc">{description}</p>
+      <div class="hero-links">
           {links?.github && (
             <a href={links.github} target="_blank" class="hero-link">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -49,102 +51,172 @@ const { title, description, tags = [], date, links, animation } = Astro.props;
               Demo
             </a>
           )}
-        </div>
       </div>
     </div>
-  </div>
+    <figure class="hero-figure">
+      {animation === 'polymarket'
+        ? <iframe class="hero-dashboard" src="https://polymarketdashboard-production.up.railway.app/" title="Polymarket live dashboard" loading="eager" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+        : coverImage
+          ? <img class="hero-image" src={coverImage} alt={`${title} project rendering`} />
+          : <canvas id="hero-canvas" class="hero-canvas" aria-label={`${title} animated rendering`}></canvas>}
+      <figcaption><span>Fig. {String(order).padStart(2, '0')} / {animation === 'polymarket' ? 'Live dashboard' : coverImage ? 'Project rendering' : 'Live study'}</span>{animation === 'polymarket' ? <a href="https://polymarketdashboard-production.up.railway.app/" target="_blank">Open dashboard ↗</a> : <span>{animation.replaceAll('-', ' ')}</span>}</figcaption>
+    </figure>
+  </header>
 
-  <article class="project-content">
-    <slot />
-  </article>
+  <div class="project-body">
+    <aside class="project-rail" aria-label="Project details">
+      <span class="rail-label">Field notes</span>
+      <span class="rail-rule"></span>
+      <span class="rail-number">{String(order).padStart(2, '0')}</span>
+      <span class="rail-year">{year}</span>
+    </aside>
+    <article class="project-content"><slot /></article>
+  </div>
 </BaseLayout>
 
 <style>
   .project-hero {
-    position: relative;
-    width: 100%;
-    height: 420px;
     margin-top: 56px;
-    overflow: hidden;
-    background: #050508;
-  }
-
-  .hero-canvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-  }
-
-  .hero-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to right, rgba(10,10,15,0.85) 40%, transparent);
-    display: flex;
-    align-items: center;
+    min-height: 540px;
+    display: grid;
+    grid-template-columns: minmax(360px, 47%) minmax(0, 53%);
+    background: #14242b;
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .hero-content {
-    padding: 48px 64px;
-    max-width: 600px;
-  }
-
-  .hero-tags {
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: clamp(36px, 5vw, 88px);
+    border-right: 1px solid var(--border-subtle);
   }
 
-  .tag {
-    font-size: 11px;
-    padding: 3px 9px;
-    border-radius: 100px;
-    background: rgba(0,212,255,0.1);
-    border: 1px solid rgba(0,212,255,0.25);
+  .hero-index {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: auto;
+    padding-bottom: 42px;
     color: var(--accent-cyan);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .14em;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+  }
+
+  .hero-tags { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 24px; }
+  .tag {
+    padding: 5px 7px;
+    border: 1px solid #547078;
+    color: #bdd1cd;
+    font-size: 10px;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: .08em;
   }
 
   .hero-title {
-    font-size: 48px;
-    font-weight: 900;
-    line-height: 1.1;
-    letter-spacing: -0.03em;
-    margin-bottom: 12px;
-    color: rgba(255, 255, 255, 0.95);
+    max-width: 660px;
+    color: var(--text-primary);
+    font-size: clamp(42px, 4vw, 70px);
+    font-weight: 600;
+    line-height: 1.02;
+    letter-spacing: -.045em;
+    margin-bottom: 26px;
   }
-
   .hero-desc {
-    font-size: 16px;
-    color: var(--text-secondary);
-    line-height: 1.6;
-    margin-bottom: 20px;
+    max-width: 560px;
+    color: #c0cecb;
+    font-size: 15px;
+    line-height: 1.65;
+    margin-bottom: 28px;
   }
-
-  .hero-links {
-    display: flex;
-    gap: 12px;
-  }
-
+  .hero-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 24px; }
   .hero-link {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 7px 16px;
-    border: 1px solid var(--border-accent);
-    border-radius: var(--radius-btn);
-    font-size: 13px;
-    font-weight: 500;
+    padding: 8px 12px;
+    border: 1px solid #6f9698;
     color: var(--text-primary);
-    transition: background 0.2s;
+    font-size: 12px;
+    font-weight: 500;
+    transition: background .2s;
   }
-  .hero-link:hover { background: rgba(0,212,255,0.1); }
+  .hero-link:hover { background: #29434b; }
+
+  .hero-figure {
+    position: relative;
+    min-width: 0;
+    height: 540px;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) 34px;
+    background: #0d191f;
+  }
+  .hero-figure::before, .hero-figure::after {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    width: 18px;
+    height: 18px;
+    pointer-events: none;
+  }
+  .hero-figure::before { top: 18px; left: 18px; border-top: 1px solid #9bb6b3; border-left: 1px solid #9bb6b3; }
+  .hero-figure::after { right: 18px; bottom: 52px; border-right: 1px solid #9bb6b3; border-bottom: 1px solid #9bb6b3; }
+  .hero-image, .hero-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+  .hero-image { object-fit: contain; padding: 30px; }
+  .hero-dashboard {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border: 0;
+    background: #0d191f;
+  }
+  .hero-figure figcaption {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 17px;
+    border-top: 1px solid #31444a;
+    color: #a2b9b6;
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  .hero-figure figcaption a { color: #c4dddd; text-decoration: underline; text-underline-offset: 2px; }
+
+  .project-body {
+    display: grid;
+    grid-template-columns: minmax(120px, 1fr) minmax(0, 780px) minmax(32px, 1fr);
+    background: #101a20;
+  }
+  .project-rail {
+    grid-column: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 60px 30px 0 clamp(24px, 4vw, 72px);
+    color: #8faeae;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  .rail-rule { width: 42px; height: 1px; background: #668c8d; }
+  .rail-number { font-size: 26px; letter-spacing: -.04em; color: #c6d8d3; }
+  .rail-year { color: #8faeae; }
 
   .project-content {
-    max-width: 780px;
-    margin: 0 auto;
+    grid-column: 2;
+    min-width: 0;
     padding: 60px 32px 120px;
     line-height: 1.75;
     font-size: 16px;
@@ -192,9 +264,9 @@ const { title, description, tags = [], date, links, animation } = Astro.props;
     color: var(--accent-cyan);
   }
   .project-content :global(pre) {
-    background: rgba(14,14,22,0.9);
+    background: rgba(23,29,33,0.96);
     border: 1px solid var(--border-subtle);
-    border-radius: 8px;
+    border-radius: 2px;
     padding: 20px;
     overflow-x: auto;
     margin: 20px 0;
@@ -206,11 +278,111 @@ const { title, description, tags = [], date, links, animation } = Astro.props;
   }
   .project-content :global(img) {
     width: 100%;
-    border-radius: 8px;
+    border-radius: 2px;
     margin: 16px 0;
   }
+  .project-content :global(figure) {
+    margin: 28px 0 38px;
+  }
+  .project-content :global(figure img) {
+    display: block;
+    margin: 0;
+    border: 1px solid var(--border-subtle);
+  }
+  .project-content :global(figcaption) {
+    margin-top: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .project-content :global(table) {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .project-content :global(th), .project-content :global(td) {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    white-space: nowrap;
+  }
+  .project-content :global(th) {
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: left;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .project-content :global(tbody tr:hover) {
+    background: rgba(100, 156, 160, .07);
+  }
+  .project-content :global(.study-slides) {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-color: #719a99 #1b282e;
+    margin: 28px 0 8px;
+    padding-bottom: 12px;
+  }
+  .project-content :global(.study-slide) {
+    box-sizing: border-box;
+    flex: 0 0 100%;
+    min-height: 320px;
+    padding: 30px 34px;
+    border: 1px solid #577779;
+    background: #17252b;
+    scroll-snap-align: start;
+  }
+  .project-content :global(.study-slide-number) {
+    display: block;
+    color: #9fc4c3;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+  }
+  .project-content :global(.study-slide h3) {
+    margin: 24px 0 12px;
+    font-size: clamp(23px, 3vw, 34px);
+    line-height: 1.15;
+  }
+  .project-content :global(.study-slide p) {
+    max-width: 60ch;
+    margin: 12px 0;
+  }
+  .project-content :global(.study-slide-note) {
+    color: #9fc4c3;
+    font-size: 13px;
+  }
+  .project-content :global(.study-slide-metrics) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+    margin: 24px 0;
+  }
+  .project-content :global(.study-slide-metrics div) {
+    display: grid;
+    gap: 2px;
+  }
+  .project-content :global(.study-slide-metrics strong) {
+    color: #dbe9e3;
+    font-size: 31px;
+    line-height: 1;
+    font-weight: 500;
+  }
+  .project-content :global(.study-slide-metrics span) {
+    color: #9fc4c3;
+    font-size: 12px;
+  }
+  .project-content :global(.study-scroll-hint) {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin: 0 0 32px;
+  }
   .project-content :global(iframe) {
-    border-radius: 8px;
+    border-radius: 2px;
     margin: 16px 0;
   }
   .project-content :global(hr) {
@@ -222,6 +394,21 @@ const { title, description, tags = [], date, links, animation } = Astro.props;
     color: var(--accent-cyan);
     text-decoration: underline;
     text-underline-offset: 3px;
+  }
+  @media (max-width: 900px) {
+    .project-hero { grid-template-columns: 1fr; }
+    .hero-content { min-height: 420px; border-right: 0; border-bottom: 1px solid var(--border-subtle); }
+    .hero-figure { height: 360px; }
+    .project-body { grid-template-columns: 1fr; }
+    .project-rail { display: none; }
+    .project-content { grid-column: 1; }
+  }
+  @media (max-width: 600px) {
+    .hero-content { padding: 30px 24px; }
+    .hero-title { font-size: 40px; }
+    .hero-figure { height: 300px; }
+    .hero-image { padding: 18px; }
+    .project-content { padding: 36px 24px 90px; }
   }
 </style>
 
