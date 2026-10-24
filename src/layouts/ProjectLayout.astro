@@ -289,6 +289,16 @@ const year = date ? new Date(`${date}T00:00:00`).getFullYear() : null;
     margin: 0;
     border: 1px solid var(--border-subtle);
   }
+  .project-content :global(figure video) {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 70vh;
+    margin-inline: auto;
+    background: #0d191f;
+    border: 1px solid var(--border-subtle);
+  }
   .project-content :global(figcaption) {
     margin-top: 8px;
     color: var(--text-muted);

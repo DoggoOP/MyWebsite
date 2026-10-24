@@ -6,30 +6,28 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
 <BaseLayout title="Ethan Kong">
   <canvas id="flow-canvas" class="flow-canvas" aria-hidden="true"></canvas>
   <main class="landing">
-    <!-- Left: 3D Viewer -->
+    <!-- 3D viewer sits to the right of the bio on desktop. -->
     <section class="landing-viewer">
       <PointCloudViewer src="/assets/3dImage-clean.lssnap" airflow={true} client:only="react" />
-      <div class="flow-key" aria-hidden="true"><span id="flow-key-mode">Projection pressure</span><i class="pressure-low"></i><span id="flow-key-low">low</span><i class="pressure-high"></i><span id="flow-key-high">high</span></div>
+      <div class="flow-key" aria-hidden="true"><span id="flow-key-mode">Vorticity</span><i class="pressure-low"></i><span id="flow-key-low">CW</span><i class="pressure-high"></i><span id="flow-key-high">CCW</span></div>
     </section>
 
-    <!-- Right: Bio Card -->
+    <!-- Bio card -->
     <section class="landing-bio">
       <div class="bio-card" id="bio-card">
         <p class="bio-greeting">
           hi i'm <span class="hero-name">ETHAN KONG</span>
         </p>
-
         <p class="bio-text">
-          I was born and raised in Hong Kong and am now studying Aeronautics
-          and Astronautics at Stanford. I love to make cool and fun projects,
-          which you can take a look at here. I hope you enjoy exploring my
-          projects as much as I enjoyed working on them.
+          I grew up in Hong Kong and chose to study Aeronautics and Astronautics
+          at Stanford for its systems-level approach to design. I like working
+          through a whole system, from its physics and mechanics to its electronics
+          and software.
         </p>
         <p class="bio-text">
-          I'm currently working with the Plasma Physics Lab and am part of the
-          Solar Car Project, Stanford Student Robotics, and Stanford Space
-          Initiative. Outside of my studies, I enjoy sailing and throwing
-          pottery on the wheel.
+          I work with the Plasma Physics Lab, Solar Car Project, Stanford Student
+          Robotics, and Stanford Space Initiative. Away from projects, I sail and
+          throw pottery on the wheel.
         </p>
 
         <p class="bio-contact-label">Feel free to reach out:</p>
@@ -94,11 +92,12 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
   }
 
   .landing-viewer {
-    flex: 0 0 58%;
+    flex: 1;
     height: 100%;
     position: relative;
     z-index: 3;
     pointer-events: auto;
+    order: 1;
   }
 
   .flow-key {
@@ -120,26 +119,45 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
   .pressure-high { background: #ec743a; }
 
   .landing-bio {
-    flex: 1;
+    flex: 0 0 52%;
     display: flex;
     position: relative;
     z-index: 3;
     align-items: center;
     justify-content: center;
-    padding: 40px 48px 40px 24px;
+    padding: 40px 0 40px 24px;
     pointer-events: auto;
+    order: 0;
   }
 
   .bio-card {
     width: 100%;
-    max-width: 440px;
-    padding: 36px 40px;
+    max-width: 550px;
+    aspect-ratio: 1;
+    padding: 70px;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
     gap: 16px;
+    text-align: center;
     background: #14242b;
-    border: 1px solid #49646c;
-    border-radius: 2px;
+    border: 1px solid #729296;
+    border-radius: 50%;
+  }
+  @media (max-width: 900px) {
+    .landing-viewer { order: 1; flex: 0 0 50vh; width: 100%; }
+    .landing-bio { order: 0; flex: 0 0 auto; }
+    .landing-bio { padding: 24px; }
+    .flow-key { display: none; }
+    .bio-card {
+      aspect-ratio: auto;
+      padding: 36px;
+      border-radius: 16px;
+    }
+  }
+  @media (max-width: 600px) {
+    .bio-card { padding: 28px; }
   }
 
   .bio-greeting {
@@ -167,6 +185,7 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
 
   .bio-contacts {
     display: flex;
+    justify-content: center;
     gap: 20px;
     align-items: center;
   }
@@ -192,7 +211,7 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     font-size: 14px;
     font-weight: 600;
     color: var(--accent-cyan);
-    align-self: flex-start;
+    align-self: center;
     cursor: pointer;
     font-family: inherit;
     transition: background 0.2s, transform 0.2s;

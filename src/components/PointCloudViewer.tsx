@@ -57,27 +57,16 @@ function parseLssnap(buffer: ArrayBuffer): LssnapData {
 }
 
 export default function PointCloudViewer({ src, className, filter = true, airflow = false }: PointCloudViewerProps) {
-  const [flowMode, setFlowMode] = useState<FlowMode>('pressure');
+  const [flowMode, setFlowMode] = useState<FlowMode>('vorticity');
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<{
-    renderer?: THREE.WebGLRenderer;
     animId?: number;
-    material?: THREE.ShaderMaterial;
-    controls?: TrackballControls;
-    autoRotating: boolean;
-    initialPos?: THREE.Vector3;
-    initialTarget?: THREE.Vector3;
-    scene?: THREE.Scene;
-    camera?: THREE.PerspectiveCamera;
-    darkBg: boolean;
-  }>({ darkBg: false, autoRotating: false });
+  }>({});
 
   const statusRef = useRef<HTMLDivElement>(null);
   const uiRef = useRef<HTMLDivElement>(null);
-  const autoRotateBtnRef = useRef<HTMLButtonElement>(null);
-  const bgBtnRef = useRef<HTMLButtonElement>(null);
   const flowControlRef = useRef<Airflow | null>(null);
-  const flowSpeedRef = useRef(1);
+  const flowSpeedRef = useRef(1.25);
   const flowDirectionRef = useRef<1 | -1>(1);
   const speedReadoutRef = useRef<HTMLOutputElement>(null);
   const directionBtnRef = useRef<HTMLButtonElement>(null);
@@ -91,6 +80,10 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
     flowControlRef.current = flow;
     flow?.setFlow(flowSpeedRef.current, flowDirectionRef.current);
     let modelPositions: Float32Array | null = null;
+    let sortSurfels: (() => void) | null = null;
+    let lastSort = 0;
+    const lastSortedPos = new THREE.Vector3();
+    const lastSortedQuat = new THREE.Quaternion();
     let frame = 0;
     let lastFlow = 0;
     const card = document.getElementById('bio-card');
@@ -101,41 +94,34 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
 
     const scene = new THREE.Scene();
     scene.background = null;
-    s.scene = scene;
 
     const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.01, 100);
     camera.position.set(0, 1, 3);
-    s.camera = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
-    s.renderer = renderer;
 
     const controls = new TrackballControls(camera, renderer.domElement);
     controls.rotateSpeed = 2.5;
     controls.zoomSpeed = 1.2;
     controls.panSpeed = 0.8;
     controls.dynamicDampingFactor = 0.15;
-    s.controls = controls;
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 
     const animate = () => {
       s.animId = requestAnimationFrame(animate);
-      // Z is the scan's up axis, so optional rotation stays upright.
-      if (s.autoRotating && s.camera && s.controls) {
-        const target = s.controls.target;
-        const pos = s.camera.position;
-        const dx = pos.x - target.x;
-        const dy = pos.y - target.y;
-        const angle = 0.0008;
-        const cos = Math.cos(angle), sin = Math.sin(angle);
-        s.camera.position.x = target.x + dx * cos - dy * sin;
-        s.camera.position.y = target.y + dx * sin + dy * cos;
-      }
       controls.update();
+      if (sortSurfels && performance.now() - lastSort > 120 &&
+          (camera.position.distanceToSquared(lastSortedPos) > 0.0001 ||
+            camera.quaternion.angleTo(lastSortedQuat) > 0.01)) {
+        sortSurfels();
+        lastSort = performance.now();
+        lastSortedPos.copy(camera.position);
+        lastSortedQuat.copy(camera.quaternion);
+      }
       if (flow && performance.now() - lastFlow > 30) {
         if (++frame % 6 === 0) flow.updateObstacles(modelPositions, camera,
           container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
@@ -149,6 +135,7 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
     const onResize = () => {
       if (!container) return;
       camera.aspect = container.clientWidth / container.clientHeight;
+      camera.filmOffset = window.innerWidth <= 900 ? 0 : -2;
       camera.updateProjectionMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
       controls.handleResize();
@@ -215,20 +202,55 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
             axisB[vi * 3 + component] = packedAxes[original * 6 + component + 3] / 10000;
           }
         }
+        const sortedPositions = new Float32Array(finalPositions.length);
+        const sortedColors = new Float32Array(finalColors.length);
+        const sortedAxisA = new Float32Array(axisA.length);
+        const sortedAxisB = new Float32Array(axisB.length);
         const geo = new THREE.InstancedBufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute([
           -1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0,
         ], 3));
         geo.setIndex([0, 1, 2, 0, 2, 3]);
-        geo.setAttribute('instanceCenter', new THREE.InstancedBufferAttribute(finalPositions, 3));
-        geo.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(finalColors, 3));
-        geo.setAttribute('instanceAxisA', new THREE.InstancedBufferAttribute(axisA, 3));
-        geo.setAttribute('instanceAxisB', new THREE.InstancedBufferAttribute(axisB, 3));
+        const centerAttr = new THREE.InstancedBufferAttribute(sortedPositions, 3);
+        const colorAttr = new THREE.InstancedBufferAttribute(sortedColors, 3);
+        const axisAAttr = new THREE.InstancedBufferAttribute(sortedAxisA, 3);
+        const axisBAttr = new THREE.InstancedBufferAttribute(sortedAxisB, 3);
+        geo.setAttribute('instanceCenter', centerAttr);
+        geo.setAttribute('instanceColor', colorAttr);
+        geo.setAttribute('instanceAxisA', axisAAttr);
+        geo.setAttribute('instanceAxisB', axisBAttr);
         geo.instanceCount = count;
+        const drawOrder = Array.from({ length: count }, (_, i) => i);
+        const depths = new Float32Array(count);
+        const viewDirection = new THREE.Vector3();
+        sortSurfels = () => {
+          camera.getWorldDirection(viewDirection);
+          for (let i = 0; i < count; i++) {
+            const offset = i * 3;
+            depths[i] = (finalPositions[offset] - camera.position.x) * viewDirection.x
+              + (finalPositions[offset + 1] - camera.position.y) * viewDirection.y
+              + (finalPositions[offset + 2] - camera.position.z) * viewDirection.z;
+          }
+          // Blend distant samples first; the nearest samples finish each pixel.
+          drawOrder.sort((a, b) => depths[b] - depths[a]);
+          for (let i = 0; i < count; i++) {
+            const source = drawOrder[i] * 3;
+            const target = i * 3;
+            for (let component = 0; component < 3; component++) {
+              sortedPositions[target + component] = finalPositions[source + component];
+              sortedColors[target + component] = finalColors[source + component];
+              sortedAxisA[target + component] = axisA[source + component];
+              sortedAxisB[target + component] = axisB[source + component];
+            }
+          }
+          centerAttr.needsUpdate = true;
+          colorAttr.needsUpdate = true;
+          axisAAttr.needsUpdate = true;
+          axisBAttr.needsUpdate = true;
+        };
         // PCA tangent axes form geometric ellipses. Their projection changes with the camera.
-        const mat = new THREE.ShaderMaterial({
-          uniforms: { uSplatSize: { value: 0.6 } },
-          vertexShader: `
+        const splatSize = { value: 0.6 };
+        const vertexShader = `
             attribute vec3 instanceCenter;
             attribute vec3 instanceColor;
             attribute vec3 instanceAxisA;
@@ -244,10 +266,15 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
               vFacing = abs(dot(normal, normalize(cameraPosition - instanceCenter)));
               vec3 splatPosition = instanceCenter
                 + uSplatSize * (instanceAxisA * position.x + instanceAxisB * position.y);
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(splatPosition, 1.0);
+              vec4 centerClip = projectionMatrix * modelViewMatrix * vec4(instanceCenter, 1.0);
+              vec4 splatClip = projectionMatrix * modelViewMatrix * vec4(splatPosition, 1.0);
+              // A surfel is one sample: use its center depth across the entire
+              // footprint so intersecting quads cannot cut holes through it.
+              splatClip.z = centerClip.z * splatClip.w / centerClip.w;
+              gl_Position = splatClip;
             }
-          `,
-          fragmentShader: `
+          `;
+        const fragmentShader = `
             varying vec3 vColor;
             varying vec2 vLocal;
             varying float vFacing;
@@ -258,14 +285,17 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
               if (alpha < 0.045) discard;
               gl_FragColor = vec4(vColor, alpha);
             }
-          `,
+          `;
+        const mat = new THREE.ShaderMaterial({
+          uniforms: { uSplatSize: splatSize },
+          vertexShader,
+          fragmentShader,
           transparent: true,
           depthTest: true,
           depthWrite: false,
           blending: THREE.NormalBlending,
           side: THREE.DoubleSide,
         });
-        s.material = mat;
         const pc = new THREE.Mesh(geo, mat);
         pc.frustumCulled = false;
         scene.add(pc);
@@ -283,13 +313,15 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
         camera.up.set(0, 0, 1);
         // A raised near-frontal camera accounts for the scan's leaning pose.
         camera.position.set(center.x - maxDim * 0.12, center.y - maxDim * 1.85, center.z + maxDim * 1.58);
-        camera.filmOffset = -8;
+        camera.filmOffset = window.innerWidth <= 900 ? 0 : -2;
         camera.updateProjectionMatrix();
         camera.lookAt(controls.target);
         controls.update();
+        sortSurfels();
+        lastSort = performance.now();
+        lastSortedPos.copy(camera.position);
+        lastSortedQuat.copy(camera.quaternion);
         flow?.updateObstacles(modelPositions, camera, container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
-        s.initialPos = camera.position.clone();
-        s.initialTarget = controls.target.clone();
 
         const annGroup = new THREE.Group();
         for (const ann of data.annotations) {
@@ -351,37 +383,10 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
     };
   }, [src, filter, airflow]);
 
-  const handlePointSize = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (stateRef.current.material) stateRef.current.material.uniforms.uSplatSize.value = parseFloat(e.target.value);
-  };
-
-  const handleBgToggle = () => {
-    const s = stateRef.current;
-    s.darkBg = !s.darkBg;
-    if (s.scene) s.scene.background = s.darkBg ? new THREE.Color(0x101a20) : null;
-    if (bgBtnRef.current) bgBtnRef.current.textContent = s.darkBg ? 'Clear' : 'Dark';
-  };
-
-  const handleReset = () => {
-    const s = stateRef.current;
-    if (s.camera && s.controls && s.initialPos && s.initialTarget) {
-      s.camera.position.copy(s.initialPos);
-      s.controls.target.copy(s.initialTarget);
-      s.controls.update();
-    }
-  };
-
-  const handleAutoRotate = () => {
-    const s = stateRef.current;
-    s.autoRotating = !s.autoRotating;
-    if (autoRotateBtnRef.current)
-      autoRotateBtnRef.current.textContent = 'Auto-Rotate: ' + (s.autoRotating ? 'ON' : 'OFF');
-  };
-
   const handleFlowSpeed = (event: React.ChangeEvent<HTMLInputElement>) => {
     flowSpeedRef.current = Number(event.target.value);
     flowControlRef.current?.setFlow(flowSpeedRef.current, flowDirectionRef.current);
-    if (speedReadoutRef.current) speedReadoutRef.current.value = `${flowSpeedRef.current.toFixed(1)}×`;
+    if (speedReadoutRef.current) speedReadoutRef.current.value = `${flowSpeedRef.current.toFixed(2)}×`;
   };
 
   const handleFlowDirection = () => {
@@ -405,23 +410,18 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
     <div className={`pcv-wrapper ${className || ''}`}>
       <div ref={mountRef} className="pcv-canvas" />
       <div ref={statusRef} className="pcv-status">Loading point cloud…</div>
-      <div ref={uiRef} className="pcv-controls" style={{ display: 'none' }}>
-        {airflow && <label className="pcv-flow-speed">Air speed
-          <input type="range" min="0.4" max="2" step="0.1" defaultValue="1" onChange={handleFlowSpeed} aria-label="Airflow speed" />
-          <output ref={speedReadoutRef}>1.0×</output>
-        </label>}
-        {airflow && <button onClick={handleFlowDirection} ref={directionBtnRef} className="pcv-btn" aria-label="Reverse airflow direction">Flow →</button>}
-        {airflow && <div className="pcv-flow-modes" role="group" aria-label="Flow visualization">
+      {airflow && <div ref={uiRef} className="pcv-controls" style={{ display: 'none' }}>
+        <label className="pcv-flow-speed">Air speed
+          <input type="range" min="0.4" max="2" step="0.05" defaultValue="1.25" onChange={handleFlowSpeed} aria-label="Airflow speed" />
+          <output ref={speedReadoutRef}>1.25×</output>
+        </label>
+        <button onClick={handleFlowDirection} ref={directionBtnRef} className="pcv-btn" aria-label="Reverse airflow direction">Flow →</button>
+        <div className="pcv-flow-modes" role="group" aria-label="Flow visualization">
           {(['pressure', 'vorticity', 'speed'] as FlowMode[]).map(mode =>
             <button key={mode} className={`pcv-btn ${flowMode === mode ? 'is-active' : ''}`} aria-pressed={flowMode === mode} onClick={() => handleFlowMode(mode)}>{mode === 'pressure' ? 'Pressure' : mode === 'vorticity' ? 'Vorticity' : 'Speed'}</button>
           )}
-        </div>}
-        <label className="pcv-label">Surfel Size</label>
-        <input type="range" min="0.15" max="0.9" step="0.05" defaultValue="0.6" onChange={handlePointSize} className="pcv-slider" aria-label="Surfel footprint size" />
-        <button onClick={handleBgToggle} ref={bgBtnRef} className="pcv-btn">Dark Bg</button>
-        <button onClick={handleReset} className="pcv-btn">Reset</button>
-        <button onClick={handleAutoRotate} ref={autoRotateBtnRef} className="pcv-btn">Auto-Rotate: OFF</button>
-      </div>
+        </div>
+      </div>}
     </div>
   );
 }

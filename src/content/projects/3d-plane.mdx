@@ -1,32 +1,46 @@
 ---
 title: 3D Printed Plane
-description: Designed and 3D-printed a 1.8 m fixed-wing UAV in Fusion 360, integrated INAV autopilot with PID tuning and LoRa telemetry for autonomous waypoint flight and data logging.
-tagline: Design, print, fly — 1.8 m autonomous UAV
+description: My first 3D-printed wing design for a 1.8 m fixed-wing plane, with a modular airframe intended to travel with me to Malaysia.
+tagline: A lighter printed wing, built in sections for travel
+coverImage: /assets/plane-wing-assembly.png
 animation: 3d-plane
 date: "2023-06-01"
-tags: [3d-printing, cad, uav, inav, fusion360, aerodynamics, rc]
+tags: [3d-printing, cad, uav, fusion360, aerodynamics, rc]
 order: 6
 ---
 
-## Overview
+## Why I made it modular
 
-This project is a fully custom 1.8-metre fixed-wing UAV — designed from scratch in Fusion 360, aerodynamically evaluated in Autodesk CFD, and 3D-printed across multiple print sessions. The end goal was to build an autonomously navigated observation plane without GPS that can fly along the coasts of Malaysia with a camera and alert local law enforcement when it detectds turtle poachers. The lack of GPS is to ensure the poachers are unable to jam the UAV's avionics with their EMF guns.
+I designed this 1.8 m fixed-wing plane with **travel to Malaysia** in mind. A one-piece wing would be awkward to print, pack, and carry, so I split the airframe into sections. That made the joints part of the design from the start: each section has to align when assembled, while the main structural path still needs to carry loads across the span.
 
-## Design & CFD
+This was my **first time designing a 3D-printed wing**. The CAD work taught me that reducing print material is only useful if the structure left behind can still support the wing.
 
-The airframe was designed in **Fusion 360** with a focus on minimizing weight and modularity: each section is sized to fit a standard print bed, with alignment pins and bonded joints at the wing-fuselage and tail interfaces. Wing geometry was iterated in **Autodesk CFD** to evaluate lift-to-drag ratio and stall characteristics across the expected speed range, informing the final airfoil selection and wing attack angle.
+<figure>
+  <img src="/assets/plane-printed-build.jpg" alt="Red and blue printed plane sections, wing panels, fuselage, and tail laid out during assembly" loading="lazy" />
+  <figcaption>Printed airframe sections during assembly. The separate panels made the plane easier to build and pack for travel.</figcaption>
+</figure>
 
-Structural considerations drove wall thicknesses, infill patterns, and spar routing — the main wing spar is a carbon rod bonded into printed spar tubes in each wing panel.
+<figure>
+  <img src="/assets/plane-wing-assembly.png" alt="Fusion 360 rendering of the modular wing assembly with open bays and section joints" loading="lazy" />
+  <figcaption>The wing assembly in CAD. Separate panels and open bays reduce printed material and make the span easier to transport.</figcaption>
+</figure>
 
-## Avionics & Autopilot
+## What the wing taught me
 
-The flight stack is built around **INAV** (open-source navigation firmware for STM32-based flight controllers):
+The open bays in the printed panels remove material that a solid print would use. The **spar matters more than simply adding plastic back**: it provides a continuous path for the wing's bending loads, while the printed structure defines the airfoil shape and transfers loads into that path. The panel joints also need to keep the sections aligned without becoming unnecessarily heavy.
 
-- **PID tuning** — manual stick inputs used to identify and correct oscillations in roll, pitch, and yaw axes; iterative in-field tuning
-- **Waypoint navigation** — INAV's mission planner used to define GPS waypoints; the aircraft flies the mission autonomously after hand launch
-- **LoRa telemetry** — long-range telemetry link streams flight data (GPS position, altitude, airspeed, battery voltage) to a ground station for real-time monitoring and data logging
-- **OSD** — on-screen display overlays key flight parameters on the FPV video feed
+<figure>
+  <img src="/assets/plane-wing-panel.png" alt="Close-up CAD rendering of a 3D-printed wing panel showing lightening bays and the edge joint" loading="lazy" />
+  <figcaption>A closer look at the cutouts and the panel edge. The geometry is a weight-saving iteration, not a measured structural result.</figcaption>
+</figure>
 
-## Flights
+## What happened in the first build
 
-The aircraft has completed multiple autonomous waypoint missions and manual FPV flights. Logged telemetry data has been used to refine the PID gains and validate cruise performance against CFD predictions.
+Without a spar, the wing deflected substantially. That flexibility contributed to unstable behavior and made clear that lightening the printed panels could not substitute for a continuous bending member. The video records an early hand-launch trial; it is not a structural measurement.
+
+<figure>
+  <video src="/assets/plane-wing-deflection.mp4" controls muted playsInline preload="metadata" poster="/assets/plane-printed-build.jpg" aria-label="Early hand-launch trial of the 3D-printed plane"></video>
+  <figcaption>Early hand-launch trial. The experience exposed the need for a spar and a stiffer, better-aligned wing assembly.</figcaption>
+</figure>
+
+I also saw instability around the tail in the pusher-prop configuration. I would revisit the center of gravity, static margin, tail size, and propeller flow before attributing that behavior to any one component. For the next iteration, I would establish a spar route first, measure wing stiffness with the sections assembled, and then remove material around the verified load path.

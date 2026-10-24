@@ -53,16 +53,6 @@
 .pcv-flow-speed input { width: 84px; accent-color: var(--accent-cyan); }
 .pcv-flow-speed output { min-width: 28px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 
-.pcv-label {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.pcv-slider {
-  width: 80px;
-  accent-color: var(--accent-cyan);
-}
-
 .pcv-btn {
   background: #29434b;
   border: 1px solid var(--border-accent);
@@ -80,3 +70,14 @@
 .pcv-flow-modes { display: inline-flex; gap: 3px; }
 .pcv-flow-modes .pcv-btn { background: transparent; }
 .pcv-flow-modes .pcv-btn.is-active { background: #36535a; color: #eef1ed; }
+
+@media (max-width: 900px) {
+  .pcv-controls {
+    top: 16px;
+    bottom: auto;
+    width: calc(100% - 32px);
+    max-width: 350px;
+    padding: 10px;
+    gap: 8px;
+  }
+}

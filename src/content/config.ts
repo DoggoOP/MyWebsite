@@ -9,7 +9,7 @@ const projects = defineCollection({
     coverImage: z.string().optional(),
     animation: z.enum([
       'lattice', 'ion-thruster', 'sailing-rl', 'solar-car',
-      '3d-plane', 'light-switch', 'rocketry', 'polymarket'
+      '3d-plane', 'light-switch', 'rocketry', 'polymarket', 'lightsaber'
     ]),
     date: z.string(),
     tags: z.array(z.string()),

@@ -27,9 +27,9 @@ export class Airflow {
   private solid = new Uint8Array(0);
   private projected = new THREE.Vector3();
   private pressureScale = 0.2;
-  private flowSpeed = 1;
+  private flowSpeed = 1.25;
   private direction: 1 | -1 = 1;
-  private mode: FlowMode = 'pressure';
+  private mode: FlowMode = 'vorticity';
   private vorticityScale = 0.1;
   private tracers: Array<{ x: number; y: number; previousX: number; previousY: number }> = [];
   private tick = 0;
@@ -142,11 +142,21 @@ export class Airflow {
     }
     this.solid.set(closed);
     if (cardRect) {
-      const x0 = clamp(Math.floor((cardRect.left - 9) / this.screenW * w), 0, w - 1);
-      const x1 = clamp(Math.ceil((cardRect.right + 9) / this.screenW * w), 0, w - 1);
-      const y0 = clamp(Math.floor((cardRect.top - 9) / this.screenH * h), 0, h - 1);
-      const y1 = clamp(Math.ceil((cardRect.bottom + 9) / this.screenH * h), 0, h - 1);
-      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) this.solid[y * w + x] = 1;
+      const margin = 4;
+      const left = cardRect.left - margin, top = cardRect.top - margin;
+      const width = cardRect.width + margin * 2, height = cardRect.height + margin * 2;
+      const x0 = clamp(Math.floor(left / this.screenW * w), 0, w - 1);
+      const x1 = clamp(Math.ceil((left + width) / this.screenW * w), 0, w - 1);
+      const y0 = clamp(Math.floor(top / this.screenH * h), 0, h - 1);
+      const y1 = clamp(Math.ceil((top + height) / this.screenH * h), 0, h - 1);
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const nx = ((x + .5) / w * this.screenW - left) / width;
+        const ny = ((y + .5) / h * this.screenH - top) / height;
+        const roundedObstacle = window.innerWidth > 900
+          ? (nx - 0.5) ** 2 + (ny - 0.5) ** 2 <= 0.25
+          : nx >= 0 && nx <= 1 && ny >= 0 && ny <= 1;
+        if (roundedObstacle) this.solid[y * w + x] = 1;
+      }
     }
     for (let i = 0; i < this.solid.length; i++) if (this.solid[i]) {
       this.u[i] = 0; this.v[i] = 0; this.dye[i] = 0;
@@ -356,7 +366,10 @@ export class Airflow {
       pixels[4 * i] = color[0];
       pixels[4 * i + 1] = color[1];
       pixels[4 * i + 2] = color[2];
-      pixels[4 * i + 3] = solid[i] ? 0 : clamp(62 + 78 * Math.abs(scale - 0.5) + 24 * dye[i], 0, 165);
+      const intensity = Math.abs(scale - 0.5);
+      pixels[4 * i + 3] = solid[i] ? 0 : this.mode === 'vorticity'
+        ? clamp(38 + 230 * intensity + 18 * dye[i], 0, 190)
+        : clamp(62 + 78 * intensity + 24 * dye[i], 0, 165);
     }
     this.offCtx.putImageData(this.image, 0, 0);
     ctx.clearRect(0, 0, this.screenW, this.screenH);
