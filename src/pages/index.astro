@@ -9,7 +9,7 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     <!-- 3D viewer sits to the right of the bio on desktop. -->
     <section class="landing-viewer">
       <PointCloudViewer src="/assets/3dImage-clean.lssnap" airflow={true} client:only="react" />
-      <div class="flow-key" aria-hidden="true"><span id="flow-key-mode">Vorticity</span><i class="pressure-low"></i><span id="flow-key-low">CW</span><i class="pressure-high"></i><span id="flow-key-high">CCW</span></div>
+      <div class="flow-key" aria-hidden="true"><span id="flow-key-mode">Vorticity</span><i class="pressure-low"></i><span id="flow-key-low">−</span><i class="pressure-high"></i><span id="flow-key-high">+</span></div>
     </section>
 
     <!-- Bio card -->
@@ -101,22 +101,22 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
   }
 
   .flow-key {
-    position: absolute;
-    z-index: 3;
-    left: 20px;
-    bottom: 22px;
+    position: fixed;
+    z-index: 12;
+    left: 28px;
+    bottom: 16px;
     display: flex;
     gap: 8px;
     align-items: center;
     color: var(--text-muted);
     font-size: 10px;
-    letter-spacing: .08em;
+    letter-spacing: .06em;
     text-transform: uppercase;
     pointer-events: none;
   }
   .flow-key i { width: 7px; height: 7px; border-radius: 50%; }
-  .pressure-low { background: #1d67b1; }
-  .pressure-high { background: #ec743a; }
+  .pressure-low { background: #7196a9; }
+  .pressure-high { background: #c78b67; }
 
   .landing-bio {
     flex: 0 0 52%;
@@ -141,8 +141,8 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     justify-content: center;
     gap: 16px;
     text-align: center;
-    background: #14242b;
-    border: 1px solid #729296;
+    background: var(--bg-base);
+    border: 0;
     border-radius: 50%;
   }
   @media (max-width: 900px) {
@@ -204,20 +204,20 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     align-items: center;
     gap: 8px;
     margin-top: 8px;
-    padding: 10px 22px;
-    background: #29434b;
-    border: 1px solid var(--border-accent);
-    border-radius: 2px;
+    padding: 6px 0;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border-accent);
+    border-radius: 0;
     font-size: 14px;
     font-weight: 600;
-    color: var(--accent-cyan);
+    color: var(--text-primary);
     align-self: center;
     cursor: pointer;
     font-family: inherit;
-    transition: background 0.2s, transform 0.2s;
+    transition: color 0.2s;
   }
   .bio-projects-link:hover {
-    background: #36535a;
-    transform: translateX(2px);
+    color: var(--accent-cyan);
   }
 </style>

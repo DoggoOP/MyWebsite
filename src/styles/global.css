@@ -1,16 +1,16 @@
 /* A restrained marine instrument palette. */
 :root {
-  --bg-base: #101a20;
-  --bg-surface: #14242b;
-  --bg-card: #192b32;
-  --accent-cyan: #a2c9cb;
-  --accent-violet: #a2c9cb;
-  --accent-green: #a2c9cb;
-  --text-primary: #eef1ed;
-  --text-secondary: #b3bdba;
-  --text-muted: #84928f;
-  --border-subtle: #39505a;
-  --border-accent: #73999d;
+  --bg-base: #12191b;
+  --bg-surface: #192225;
+  --bg-card: #1d292b;
+  --accent-cyan: #9db9b4;
+  --accent-violet: #9db9b4;
+  --accent-green: #9db9b4;
+  --text-primary: #eeeee8;
+  --text-secondary: #b5bdb9;
+  --text-muted: #8c9894;
+  --border-subtle: #34484a;
+  --border-accent: #628b88;
   --glass-blur: none;
   --radius-card: 2px;
   --radius-btn: 2px;

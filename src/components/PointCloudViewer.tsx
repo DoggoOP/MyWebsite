@@ -108,6 +108,10 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
     controls.zoomSpeed = 1.2;
     controls.panSpeed = 0.8;
     controls.dynamicDampingFactor = 0.15;
+    // The homepage scan sits in a half-width canvas. Keep orbit/zoom interactive,
+    // but prevent the camera from moving so close (or panning so far) that the
+    // person is sliced by that canvas edge.
+    controls.noPan = airflow;
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 
@@ -135,7 +139,7 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
     const onResize = () => {
       if (!container) return;
       camera.aspect = container.clientWidth / container.clientHeight;
-      camera.filmOffset = window.innerWidth <= 900 ? 0 : -2;
+      camera.filmOffset = window.innerWidth <= 900 ? 0 : 4;
       camera.updateProjectionMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
       controls.handleResize();
@@ -313,9 +317,14 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
         camera.up.set(0, 0, 1);
         // A raised near-frontal camera accounts for the scan's leaning pose.
         camera.position.set(center.x - maxDim * 0.12, center.y - maxDim * 1.85, center.z + maxDim * 1.58);
-        camera.filmOffset = window.innerWidth <= 900 ? 0 : -2;
+        camera.filmOffset = window.innerWidth <= 900 ? 0 : 4;
         camera.updateProjectionMatrix();
         camera.lookAt(controls.target);
+        if (airflow) {
+          const framingDistance = camera.position.distanceTo(controls.target);
+          controls.minDistance = framingDistance * 0.88;
+          controls.maxDistance = framingDistance * 1.8;
+        }
         controls.update();
         sortSurfels();
         lastSort = performance.now();
@@ -401,9 +410,9 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
     const name = document.getElementById('flow-key-mode');
     const low = document.getElementById('flow-key-low');
     const high = document.getElementById('flow-key-high');
-    if (name) name.textContent = mode === 'pressure' ? 'Projection pressure' : mode === 'vorticity' ? 'Vorticity' : 'Flow speed';
-    if (low) low.textContent = mode === 'vorticity' ? 'CW' : mode === 'speed' ? 'slow' : 'low';
-    if (high) high.textContent = mode === 'vorticity' ? 'CCW' : mode === 'speed' ? 'fast' : 'high';
+    if (name) name.textContent = mode === 'pressure' ? 'Pressure field' : mode === 'vorticity' ? 'Vorticity' : 'Flow speed';
+    if (low) low.textContent = mode === 'vorticity' ? '−' : mode === 'speed' ? 'slow' : 'low';
+    if (high) high.textContent = mode === 'vorticity' ? '+' : mode === 'speed' ? 'fast' : 'high';
   };
 
   return (

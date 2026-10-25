@@ -65,7 +65,7 @@ export class Airflow {
     this.solid = new Uint8Array(n);
     this.off.width = this.w; this.off.height = this.h;
     this.image = this.offCtx.createImageData(this.w, this.h);
-    this.tracers = Array.from({ length: 1900 }, () => {
+    this.tracers = Array.from({ length: clamp(Math.round(width * 0.9), 500, 1400) }, () => {
       const x = 1 + Math.random() * (this.w - 2), y = 1 + Math.random() * (this.h - 2);
       return { x, y, previousX: x, previousY: y };
     });
@@ -142,7 +142,7 @@ export class Airflow {
     }
     this.solid.set(closed);
     if (cardRect) {
-      const margin = 4;
+      const margin = 0;
       const left = cardRect.left - margin, top = cardRect.top - margin;
       const width = cardRect.width + margin * 2, height = cardRect.height + margin * 2;
       const x0 = clamp(Math.floor(left / this.screenW * w), 0, w - 1);
@@ -344,10 +344,9 @@ export class Airflow {
     for (let i = 0; i < curl.length; i++) if (!solid[i]) maxCurl = Math.max(maxCurl, Math.abs(curl[i]));
     this.vorticityScale = this.vorticityScale * 0.94 + Math.max(0.035, maxCurl * 0.35) * 0.06;
     const pixels = this.image.data;
-    const palette = [
-      [15, 43, 103], [29, 103, 177], [51, 197, 215],
-      [113, 221, 172], [232, 221, 91], [236, 116, 58],
-    ];
+    const palette = this.mode === 'speed'
+      ? [[25, 38, 40], [55, 83, 85], [112, 150, 145], [188, 202, 185]]
+      : [[43, 83, 106], [94, 141, 157], [28, 41, 43], [158, 111, 83], [203, 145, 103]];
     const colorAt = (value: number) => {
       const scaled = clamp(value, 0, 1) * (palette.length - 1);
       const index = Math.min(palette.length - 2, Math.floor(scaled));
@@ -367,9 +366,9 @@ export class Airflow {
       pixels[4 * i + 1] = color[1];
       pixels[4 * i + 2] = color[2];
       const intensity = Math.abs(scale - 0.5);
-      pixels[4 * i + 3] = solid[i] ? 0 : this.mode === 'vorticity'
-        ? clamp(38 + 230 * intensity + 18 * dye[i], 0, 190)
-        : clamp(62 + 78 * intensity + 24 * dye[i], 0, 165);
+      pixels[4 * i + 3] = solid[i] ? 0 : this.mode === 'speed'
+        ? clamp(26 + 105 * scale + 10 * dye[i], 0, 145)
+        : clamp(24 + 245 * intensity + 14 * dye[i], 0, 180);
     }
     this.offCtx.putImageData(this.image, 0, 0);
     ctx.clearRect(0, 0, this.screenW, this.screenH);
@@ -385,7 +384,7 @@ export class Airflow {
       if (solid[i] || (tracer.x === tracer.previousX && tracer.y === tracer.previousY)) continue;
       const color = colorAt(fieldValue(i));
       const edgeFade = Math.min(1, tracer.x / 8, (w - 1 - tracer.x) / 8);
-      ctx.strokeStyle = `rgba(${Math.round(color[0] * 0.55 + 245 * 0.45)},${Math.round(color[1] * 0.55 + 250 * 0.45)},${Math.round(color[2] * 0.55 + 246 * 0.45)},${0.85 * edgeFade})`;
+      ctx.strokeStyle = `rgba(${Math.round(color[0] * 0.6 + 230 * 0.4)},${Math.round(color[1] * 0.6 + 232 * 0.4)},${Math.round(color[2] * 0.6 + 225 * 0.4)},${0.58 * edgeFade})`;
       ctx.beginPath();
       ctx.moveTo(tracer.previousX * sx, tracer.previousY * sy);
       ctx.lineTo(tracer.x * sx, tracer.y * sy);

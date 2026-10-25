@@ -80,7 +80,7 @@ const year = date ? new Date(`${date}T00:00:00`).getFullYear() : null;
     min-height: 540px;
     display: grid;
     grid-template-columns: minmax(360px, 47%) minmax(0, 53%);
-    background: #14242b;
+    background: var(--bg-surface);
     border-bottom: 1px solid var(--border-subtle);
   }
 
@@ -145,7 +145,7 @@ const year = date ? new Date(`${date}T00:00:00`).getFullYear() : null;
     font-weight: 500;
     transition: background .2s;
   }
-  .hero-link:hover { background: #29434b; }
+  .hero-link:hover { background: var(--bg-card); }
 
   .hero-figure {
     position: relative;
@@ -196,7 +196,7 @@ const year = date ? new Date(`${date}T00:00:00`).getFullYear() : null;
   .project-body {
     display: grid;
     grid-template-columns: minmax(120px, 1fr) minmax(0, 780px) minmax(32px, 1fr);
-    background: #101a20;
+    background: var(--bg-base);
   }
   .project-rail {
     grid-column: 1;
