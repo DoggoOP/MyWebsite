@@ -29,6 +29,7 @@ export class Airflow {
   private pressureScale = 0.2;
   private flowSpeed = 1.25;
   private direction: 1 | -1 = 1;
+  private vertical = false;
   private mode: FlowMode = 'vorticity';
   private vorticityScale = 0.1;
   private tracers: Array<{ x: number; y: number; previousX: number; previousY: number }> = [];
@@ -45,6 +46,7 @@ export class Airflow {
     const width = window.innerWidth, height = window.innerHeight;
     if (width === this.screenW && height === this.screenH) return;
     this.screenW = width; this.screenH = height;
+    this.vertical = width <= 900 && height > width;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.canvas.width = Math.round(width * dpr);
     this.canvas.height = Math.round(height * dpr);
@@ -52,8 +54,8 @@ export class Airflow {
     this.w = clamp(Math.round(width / 5.5), 140, 270);
     this.h = clamp(Math.round(this.w * height / width), 70, 180);
     const n = this.w * this.h;
-    this.u = new Float32Array(n).fill(1.45 * this.flowSpeed * this.direction);
-    this.v = new Float32Array(n);
+    this.u = new Float32Array(n).fill(this.vertical ? 0 : 1.45 * this.flowSpeed * this.direction);
+    this.v = new Float32Array(n).fill(this.vertical ? 1.45 * this.flowSpeed * this.direction : 0);
     this.uNext = new Float32Array(n);
     this.vNext = new Float32Array(n);
     this.pressure = new Float32Array(n);
@@ -88,13 +90,15 @@ export class Airflow {
 
   setMode(mode: FlowMode) { this.mode = mode; }
 
+  isVertical() { return this.vertical; }
+
   setFlow(speed: number, direction: 1 | -1) {
     const previousSpeed = this.flowSpeed;
     this.flowSpeed = clamp(speed, 0.4, 2);
     if (direction !== this.direction) {
       this.direction = direction;
-      this.u.fill(1.45 * this.flowSpeed * direction);
-      this.v.fill(0);
+      this.u.fill(this.vertical ? 0 : 1.45 * this.flowSpeed * direction);
+      this.v.fill(this.vertical ? 1.45 * this.flowSpeed * direction : 0);
       this.dye.fill(0);
     } else if (previousSpeed !== this.flowSpeed) {
       const ratio = this.flowSpeed / previousSpeed;
@@ -152,9 +156,7 @@ export class Airflow {
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
         const nx = ((x + .5) / w * this.screenW - left) / width;
         const ny = ((y + .5) / h * this.screenH - top) / height;
-        const roundedObstacle = window.innerWidth > 900
-          ? (nx - 0.5) ** 2 + (ny - 0.5) ** 2 <= 0.25
-          : nx >= 0 && nx <= 1 && ny >= 0 && ny <= 1;
+        const roundedObstacle = (nx - 0.5) ** 2 + (ny - 0.5) ** 2 <= 0.25;
         if (roundedObstacle) this.solid[y * w + x] = 1;
       }
     }
@@ -174,6 +176,27 @@ export class Airflow {
 
   private boundaries() {
     const { w, h, u, v, solid } = this;
+    if (this.vertical) {
+      for (let x = 0; x < w; x++) {
+        const top = x, bottom = (h - 1) * w + x;
+        if (this.direction === 1) {
+          v[top] = v[top + w] = 1.45 * this.flowSpeed;
+          u[top] = u[top + w] = this.flowSpeed * (0.12 * Math.sin(x * 0.075 + this.tick * 0.025)
+            + 0.035 * Math.sin(x * 0.17 - this.tick * 0.045));
+          v[bottom] = v[bottom - w]; u[bottom] = u[bottom - w];
+        } else {
+          v[bottom] = v[bottom - w] = -1.45 * this.flowSpeed;
+          u[bottom] = u[bottom - w] = this.flowSpeed * (0.12 * Math.sin(x * 0.075 + this.tick * 0.025)
+            + 0.035 * Math.sin(x * 0.17 - this.tick * 0.045));
+          v[top] = v[top + w]; u[top] = u[top + w];
+        }
+      }
+      for (let y = 0; y < h; y++) {
+        u[y * w] = 0; u[y * w + w - 1] = 0;
+      }
+      for (let i = 0; i < solid.length; i++) if (solid[i]) { u[i] = 0; v[i] = 0; }
+      return;
+    }
     for (let y = 0; y < h; y++) {
       const left = y * w, right = left + w - 1;
       if (this.direction === 1) {
@@ -254,8 +277,10 @@ export class Airflow {
       if (solid[i]) { this.uNext[i] = this.vNext[i] = 0; continue; }
       const bx = x - this.u[i] * 0.9, by = y - this.v[i] * 0.9;
       const back = clamp(Math.round(by), 0, h - 1) * w + clamp(Math.round(bx), 0, w - 1);
-      this.uNext[i] = (solid[back] ? this.u[i] : this.sample(this.u, bx, by)) * 0.996 + 0.006 * this.direction * this.flowSpeed;
-      this.vNext[i] = (solid[back] ? this.v[i] : this.sample(this.v, bx, by)) * 0.996;
+      this.uNext[i] = (solid[back] ? this.u[i] : this.sample(this.u, bx, by)) * 0.996
+        + (this.vertical ? 0 : 0.006 * this.direction * this.flowSpeed);
+      this.vNext[i] = (solid[back] ? this.v[i] : this.sample(this.v, bx, by)) * 0.996
+        + (this.vertical ? 0.006 * this.direction * this.flowSpeed : 0);
     }
     [this.u, this.uNext] = [this.uNext, this.u];
     [this.v, this.vNext] = [this.vNext, this.v];
@@ -288,10 +313,13 @@ export class Airflow {
       this.dyeNext[i] = this.sample(this.dye, bx, by) * 0.996;
     }
     [this.dye, this.dyeNext] = [this.dyeNext, this.dye];
-    for (let y = 1; y < h - 1; y++) {
-      const i = y * w + (this.direction === 1 ? 1 : w - 2);
-      const ribbon = Math.pow(Math.max(0, Math.sin(y * 0.19 + this.tick * 0.052)), 8);
-      const pulse = 0.6 + 0.4 * Math.sin(y * 0.11 - this.tick * 0.09);
+    const crossSize = this.vertical ? w : h;
+    for (let cross = 1; cross < crossSize - 1; cross++) {
+      const i = this.vertical
+        ? (this.direction === 1 ? w : (h - 2) * w) + cross
+        : cross * w + (this.direction === 1 ? 1 : w - 2);
+      const ribbon = Math.pow(Math.max(0, Math.sin(cross * 0.19 + this.tick * 0.052)), 8);
+      const pulse = 0.6 + 0.4 * Math.sin(cross * 0.11 - this.tick * 0.09);
       this.dye[i] = 0.12 + 0.85 * ribbon * pulse;
     }
     this.tick++;
@@ -311,20 +339,29 @@ export class Airflow {
       tracer.previousY = tracer.y;
       if (nextX < 1 || nextX >= w - 2 || nextY < 1 || nextY >= h - 2) {
         // Fluid parcels leave the domain and new parcels enter at the inlet.
-        tracer.x = this.direction === 1 ? 1 : w - 2;
-        tracer.y = 1 + Math.random() * (h - 3);
+        tracer.x = this.vertical ? 1 + Math.random() * (w - 3) : this.direction === 1 ? 1 : w - 2;
+        tracer.y = this.vertical ? (this.direction === 1 ? 1 : h - 2) : 1 + Math.random() * (h - 3);
         tracer.previousX = tracer.x;
         tracer.previousY = tracer.y;
         continue;
       }
       if (solid[Math.round(nextY) * w + Math.round(nextX)]) {
         // Slide along the projected surface until the local flow clears it.
-        let above = 1, below = 1;
-        while (above < 14 && solid[clamp(Math.round(nextY - above), 1, h - 2) * w + Math.round(nextX)]) above++;
-        while (below < 14 && solid[clamp(Math.round(nextY + below), 1, h - 2) * w + Math.round(nextX)]) below++;
-        const side = above === below ? (tracer.y < h * 0.5 ? -1 : 1) : (above < below ? -1 : 1);
-        nextX = tracer.x - this.direction * 0.2;
-        nextY = clamp(tracer.y + side * 1.15, 1, h - 2);
+        if (this.vertical) {
+          let left = 1, right = 1;
+          while (left < 14 && solid[Math.round(nextY) * w + clamp(Math.round(nextX - left), 1, w - 2)]) left++;
+          while (right < 14 && solid[Math.round(nextY) * w + clamp(Math.round(nextX + right), 1, w - 2)]) right++;
+          const side = left === right ? (tracer.x < w * 0.5 ? -1 : 1) : (left < right ? -1 : 1);
+          nextX = clamp(tracer.x + side * 1.15, 1, w - 2);
+          nextY = tracer.y - this.direction * 0.2;
+        } else {
+          let above = 1, below = 1;
+          while (above < 14 && solid[clamp(Math.round(nextY - above), 1, h - 2) * w + Math.round(nextX)]) above++;
+          while (below < 14 && solid[clamp(Math.round(nextY + below), 1, h - 2) * w + Math.round(nextX)]) below++;
+          const side = above === below ? (tracer.y < h * 0.5 ? -1 : 1) : (above < below ? -1 : 1);
+          nextX = tracer.x - this.direction * 0.2;
+          nextY = clamp(tracer.y + side * 1.15, 1, h - 2);
+        }
         if (solid[Math.round(nextY) * w + Math.round(nextX)]) {
           nextX = tracer.x;
           nextY = tracer.y;
@@ -383,7 +420,9 @@ export class Airflow {
       const i = Math.round(tracer.y) * w + Math.round(tracer.x);
       if (solid[i] || (tracer.x === tracer.previousX && tracer.y === tracer.previousY)) continue;
       const color = colorAt(fieldValue(i));
-      const edgeFade = Math.min(1, tracer.x / 8, (w - 1 - tracer.x) / 8);
+      const edgeFade = this.vertical
+        ? Math.min(1, tracer.y / 8, (h - 1 - tracer.y) / 8)
+        : Math.min(1, tracer.x / 8, (w - 1 - tracer.x) / 8);
       ctx.strokeStyle = `rgba(${Math.round(color[0] * 0.6 + 230 * 0.4)},${Math.round(color[1] * 0.6 + 232 * 0.4)},${Math.round(color[2] * 0.6 + 225 * 0.4)},${0.58 * edgeFade})`;
       ctx.beginPath();
       ctx.moveTo(tracer.previousX * sx, tracer.previousY * sy);

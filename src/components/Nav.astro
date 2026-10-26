@@ -7,7 +7,10 @@ const { showBack = false, backHref = '/projects' } = Astro.props;
 ---
 
 <nav class="nav">
-  <a href="/" class="nav-logo">Ethan Kong</a>
+  <a href="/" class="nav-logo" aria-label="Ethan Kong — home">
+    <canvas class="nav-flow" aria-hidden="true"></canvas>
+    <span class="nav-core" aria-hidden="true">EK</span>
+  </a>
   <div class="nav-links">
     {showBack && (
       <a href={backHref} class="nav-back">
@@ -30,17 +33,40 @@ const { showBack = false, backHref = '/projects' } = Astro.props;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 32px;
+    height: 56px;
+    padding: 6px 32px;
     background: rgba(18,25,27,0.96);
     border-bottom: 1px solid var(--border-subtle);
     backdrop-filter: var(--glass-blur);
   }
 
   .nav-logo {
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 88px;
+    height: 48px;
+    flex: 0 0 88px;
+  }
+  .nav-flow { position: absolute; inset: 0; display: block; width: 88px; height: 48px; filter: blur(.6px); }
+  .nav-core {
+    position: absolute;
+    left: 15px;
+    top: 8px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-base);
     color: var(--text-primary);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -.05em;
   }
 
   .nav-links {
@@ -82,4 +108,19 @@ const { showBack = false, backHref = '/projects' } = Astro.props;
     transition: color 0.2s;
   }
   .nav-back:hover { color: var(--accent-cyan); }
+  @media (max-width: 600px) { .nav { padding: 6px 16px; } }
 </style>
+
+<script>
+  import { startNavFlow } from './navFlow';
+
+  let stopFlow: (() => void) | undefined;
+  function initNavFlow() {
+    stopFlow?.();
+    const canvas = document.querySelector<HTMLCanvasElement>('.nav-flow');
+    if (canvas) stopFlow = startNavFlow(canvas);
+  }
+  document.addEventListener('astro:before-swap', () => stopFlow?.());
+  document.addEventListener('astro:page-load', initNavFlow);
+  initNavFlow();
+</script>

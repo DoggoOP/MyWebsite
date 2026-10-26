@@ -18,16 +18,20 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
         <p class="bio-greeting">
           hi i'm <span class="hero-name">ETHAN KONG</span>
         </p>
-        <p class="bio-text">
+        <p class="bio-text bio-text-desktop">
           I grew up in Hong Kong and chose to study Aeronautics and Astronautics
           at Stanford for its systems-level approach to design. I like working
           through a whole system, from its physics and mechanics to its electronics
           and software.
         </p>
-        <p class="bio-text">
+        <p class="bio-text bio-text-desktop">
           I work with the Plasma Physics Lab, Solar Car Project, Stanford Student
           Robotics, and Stanford Space Initiative. Away from projects, I sail and
           throw pottery on the wheel.
+        </p>
+        <p class="bio-text bio-text-mobile">
+          I grew up in Hong Kong and study AeroAstro at Stanford. I build across
+          mechanics, electronics, and software. Outside projects, I sail and make pottery.
         </p>
 
         <p class="bio-contact-label">Feel free to reach out:</p>
@@ -145,21 +149,20 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     border: 0;
     border-radius: 50%;
   }
+  .bio-text-mobile { display: none; }
   @media (max-width: 900px) {
     .landing-viewer { order: 1; flex: 0 0 50vh; width: 100%; }
     .landing-bio { order: 0; flex: 0 0 auto; }
-    .landing-bio { padding: 24px; }
+    .landing-bio { padding: 16px; }
     .flow-key { display: none; }
+    .landing { padding-bottom: 76px; }
     .bio-card {
-      aspect-ratio: auto;
+      width: min(100%, 520px);
+      aspect-ratio: 1;
       padding: 36px;
-      border-radius: 16px;
+      border-radius: 50%;
     }
   }
-  @media (max-width: 600px) {
-    .bio-card { padding: 28px; }
-  }
-
   .bio-greeting {
     font-size: 28px;
     font-weight: 800;
@@ -219,5 +222,22 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
   }
   .bio-projects-link:hover {
     color: var(--accent-cyan);
+  }
+  @media (max-width: 600px) {
+    .landing-bio { padding: 10px; }
+    .bio-card {
+      width: min(78vw, 320px);
+      height: min(78vw, 320px);
+      padding: 18px;
+      gap: 6px;
+      flex: 0 0 auto;
+    }
+    .bio-greeting { font-size: clamp(17px, 5vw, 21px); line-height: 1.12; }
+    .hero-name { display: block; }
+    .bio-text-desktop, .bio-contact-label { display: none; }
+    .bio-text-mobile { display: block; font-size: clamp(10px, 2.7vw, 11px); line-height: 1.37; }
+    .bio-contacts { gap: 12px; }
+    .bio-contacts svg { width: 18px; height: 18px; }
+    .bio-projects-link { font-size: 11px; margin-top: 0; padding: 3px 0; }
   }
 </style>

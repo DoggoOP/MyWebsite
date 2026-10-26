@@ -11,6 +11,8 @@ links:
   github: https://github.com/DoggoOP/SolarCarLuminaryAutoCFD
 ---
 
+import SailVideo from '../../components/SailVideo.astro';
+
 ## Engineering work
 
 I built **AutoCFD**, a pipeline that accepts a vehicle CAD file, sets up a Luminary Cloud simulation, monitors the run, and extracts drag, side force, lift, center of pressure, and convergence information. The application also logs results to Google Sheets so geometry and wind cases can be compared. The code includes farfield and mesh setup, optional rotating-wheel treatment, and a job dashboard. These are implemented workflow features, not claims that every simulation has been validated experimentally.
@@ -57,7 +59,7 @@ This study tests a retractable, auto-cambering sail for crosswind energy harvest
 </figure>
 
 <figure class="project-figure">
-  <video src="/assets/solar-sail-camber.mp4" controls autoPlay muted loop playsInline preload="metadata" poster="/assets/solar-sail-assembly.png" aria-label="Prototype sail changing camber"></video>
+  <SailVideo />
   <figcaption>Physical sail prototype changing camber. The motion demonstrates the mechanism; it does not establish the optimal trim or lift-to-drag ratio.</figcaption>
 </figure>
 

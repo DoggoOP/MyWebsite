@@ -56,6 +56,10 @@ function parseLssnap(buffer: ArrayBuffer): LssnapData {
   return { vertexCount, positions, colors, annotations };
 }
 
+function flowDirectionLabel(vertical: boolean, direction: 1 | -1) {
+  return `Flow ${vertical ? (direction === 1 ? '↓' : '↑') : (direction === 1 ? '→' : '←')}`;
+}
+
 export default function PointCloudViewer({ src, className, filter = true, airflow = false }: PointCloudViewerProps) {
   const [flowMode, setFlowMode] = useState<FlowMode>('vorticity');
   const mountRef = useRef<HTMLDivElement>(null);
@@ -79,6 +83,8 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
     const flow = flowCanvas ? new Airflow(flowCanvas) : null;
     flowControlRef.current = flow;
     flow?.setFlow(flowSpeedRef.current, flowDirectionRef.current);
+    if (directionBtnRef.current && flow)
+      directionBtnRef.current.textContent = flowDirectionLabel(flow.isVertical(), flowDirectionRef.current);
     let modelPositions: Float32Array | null = null;
     let sortSurfels: (() => void) | null = null;
     let lastSort = 0;
@@ -144,6 +150,8 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
       renderer.setSize(container.clientWidth, container.clientHeight);
       controls.handleResize();
       flow?.resize();
+      if (directionBtnRef.current && flow)
+        directionBtnRef.current.textContent = flowDirectionLabel(flow.isVertical(), flowDirectionRef.current);
       flow?.updateObstacles(modelPositions, camera, container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
     };
     window.addEventListener('resize', onResize);
@@ -401,7 +409,8 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
   const handleFlowDirection = () => {
     flowDirectionRef.current = flowDirectionRef.current === 1 ? -1 : 1;
     flowControlRef.current?.setFlow(flowSpeedRef.current, flowDirectionRef.current);
-    if (directionBtnRef.current) directionBtnRef.current.textContent = `Flow ${flowDirectionRef.current === 1 ? '→' : '←'}`;
+    if (directionBtnRef.current)
+      directionBtnRef.current.textContent = flowDirectionLabel(flowControlRef.current?.isVertical() ?? false, flowDirectionRef.current);
   };
 
   const handleFlowMode = (mode: FlowMode) => {

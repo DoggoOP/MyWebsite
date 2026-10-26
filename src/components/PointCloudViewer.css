@@ -107,19 +107,19 @@
 
 @media (max-width: 900px) {
   .pcv-controls {
-    position: absolute;
-    top: 14px;
-    bottom: auto;
-    left: 50%;
-    transform: translateX(-50%);
-    width: calc(100% - 32px);
-    max-width: 350px;
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    transform: none;
+    width: 100%;
+    max-width: none;
     height: auto;
-    min-height: 66px;
-    padding: 6px 12px;
+    min-height: 72px;
+    padding: 7px 12px max(7px, env(safe-area-inset-bottom));
     background: var(--bg-base);
     border-top: 1px solid var(--border-subtle);
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 0;
     justify-content: center;
     flex-wrap: wrap;
     column-gap: 16px;
