@@ -19,7 +19,7 @@ const year = date ? new Date(`${date}T00:00:00`).getFullYear() : null;
 <BaseLayout title={`${title} — Ethan Kong`} showBack={true} backHref="/">
   <header class="project-hero" data-animation={animation}>
     <div class="hero-content">
-      <div class="hero-index"><span>Project log / {String(order).padStart(2, '0')}</span><span>{year}</span></div>
+      <div class="hero-index"><span>Project log / {String(order).padStart(2, '0')}</span>{year && <span>{year}</span>}</div>
       <div class="hero-tags">
         {tags.slice(0, 4).map(tag => <span class="tag">{tag}</span>)}
       </div>
@@ -56,10 +56,15 @@ const year = date ? new Date(`${date}T00:00:00`).getFullYear() : null;
     <figure class="hero-figure">
       {animation === 'polymarket'
         ? <iframe class="hero-dashboard" src="https://polymarketdashboard-production.up.railway.app/" title="Polymarket live dashboard" loading="eager" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+        : animation === 'ar-go-kart'
+          ? <picture class="hero-picture">
+              <source media="(max-width: 600px)" srcset="/assets/ar-go-kart-system-mobile.svg" />
+              <img class="hero-image" src={coverImage} alt="Augmented reality go-kart system schematic" />
+            </picture>
         : coverImage
           ? <img class="hero-image" src={coverImage} alt={`${title} project rendering`} />
           : <canvas id="hero-canvas" class="hero-canvas" aria-label={`${title} animated rendering`}></canvas>}
-      <figcaption><span>Fig. {String(order).padStart(2, '0')} / {animation === 'polymarket' ? 'Live dashboard' : coverImage ? 'Project rendering' : 'Live study'}</span>{animation === 'polymarket' ? <a href="https://polymarketdashboard-production.up.railway.app/" target="_blank">Open dashboard ↗</a> : <span>{animation.replaceAll('-', ' ')}</span>}</figcaption>
+      <figcaption><span>Fig. {String(order).padStart(2, '0')} / {animation === 'polymarket' ? 'Live dashboard' : animation === 'ar-go-kart' ? 'System schematic' : coverImage ? 'Project rendering' : 'Live study'}</span>{animation === 'polymarket' ? <a href="https://polymarketdashboard-production.up.railway.app/" target="_blank">Open dashboard ↗</a> : <span>{animation.replaceAll('-', ' ')}</span>}</figcaption>
     </figure>
   </header>
 
@@ -68,7 +73,7 @@ const year = date ? new Date(`${date}T00:00:00`).getFullYear() : null;
       <span class="rail-label">Field notes</span>
       <span class="rail-rule"></span>
       <span class="rail-number">{String(order).padStart(2, '0')}</span>
-      <span class="rail-year">{year}</span>
+      {year && <span class="rail-year">{year}</span>}
     </aside>
     <article class="project-content"><slot /></article>
   </div>
@@ -171,6 +176,7 @@ const year = date ? new Date(`${date}T00:00:00`).getFullYear() : null;
     height: 100%;
     min-height: 0;
   }
+  .hero-picture { display: block; width: 100%; height: 100%; min-height: 0; }
   .hero-image { object-fit: contain; padding: 30px; }
   .hero-dashboard {
     display: block;
@@ -417,6 +423,7 @@ const year = date ? new Date(`${date}T00:00:00`).getFullYear() : null;
     .hero-content { padding: 30px 24px; }
     .hero-title { font-size: 40px; }
     .hero-figure { height: 300px; }
+    .hero-figure:has(.hero-picture) { height: 730px; }
     .hero-image { padding: 18px; }
     .project-content { padding: 36px 24px 90px; }
   }

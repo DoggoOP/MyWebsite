@@ -37,7 +37,7 @@ const projects = allProjects.sort((a, b) => a.data.order - b.data.order);
       {projects.map(p => (
         <div class="preview-card" id={`preview-${p.slug}`} hidden>
           {p.data.coverImage
-            ? <img class="preview-anim preview-image" src={p.data.coverImage} alt={`${p.data.title} project rendering`} />
+            ? <img class="preview-anim preview-image" src={p.data.coverImage} alt={p.data.animation === 'ar-go-kart' ? 'Augmented reality go-kart system schematic' : `${p.data.title} project rendering`} />
             : <canvas class="preview-anim" data-animation={p.data.animation}></canvas>}
           <div class="preview-content">
             <div class="preview-tags">

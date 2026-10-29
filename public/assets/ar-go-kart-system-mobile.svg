@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Augmented reality go-kart system schematic, portrait layout</title>
+  <desc id="desc">The real kart follows virtual fast and slow zones. Quest 3 events and the driver's throttle feed a Raspberry Pi, which sends an adjusted signal to the motor controller and kart motor.</desc>
+  <style>
+    text { font-family: Helvetica, Arial, sans-serif; fill: #e7eeea; }
+    .label { font-size: 20px; font-weight: 700; letter-spacing: 1.4px; }
+    .small { font-size: 17px; fill: #bfd1cc; }
+    .tiny { font-size: 14px; letter-spacing: 1.4px; fill: #9ab5b4; }
+    .line { fill: none; stroke: #83a2a1; stroke-width: 2; }
+  </style>
+  <rect width="600" height="1080" fill="#0d191f"/>
+  <rect x="16" y="16" width="568" height="1048" fill="none" stroke="#355158" stroke-width="2"/>
+  <path d="M16 82H584" stroke="#355158" stroke-width="2"/>
+  <text x="40" y="53" class="label">AR GO-KART</text>
+  <text x="561" y="53" class="tiny" text-anchor="end">SYSTEM SCHEMATIC</text>
+
+  <text x="40" y="116" class="tiny">01 / VIRTUAL COURSE + REAL KART</text>
+  <path d="M110 178 C191 117 404 128 487 201 C556 262 547 404 472 459 C389 522 199 510 112 455 C40 409 42 238 110 178Z" fill="none" stroke="#45666b" stroke-width="29" opacity=".42"/>
+  <path d="M110 178 C191 117 404 128 487 201 C556 262 547 404 472 459 C389 522 199 510 112 455 C40 409 42 238 110 178Z" fill="none" stroke="#a6b8b1" stroke-width="2" stroke-dasharray="12 15" opacity=".65"/>
+  <circle cx="112" cy="318" r="35" fill="#203c47" stroke="#79a8ba" stroke-width="2"/>
+  <text x="112" y="330" text-anchor="middle" style="font-size:37px;font-weight:700">−</text>
+  <text x="86" y="374" class="tiny">SLOW</text>
+  <circle cx="479" cy="327" r="35" fill="#49332b" stroke="#c99472" stroke-width="2"/>
+  <text x="479" y="340" text-anchor="middle" style="font-size:37px;font-weight:700">+</text>
+  <text x="459" y="383" class="tiny">FAST</text>
+
+  <g transform="translate(298 317) rotate(-12)">
+    <rect x="-114" y="-72" width="46" height="27" rx="8" fill="#657f80" stroke="#b0c1b7" stroke-width="2"/>
+    <rect x="68" y="-72" width="46" height="27" rx="8" fill="#657f80" stroke="#b0c1b7" stroke-width="2"/>
+    <rect x="-114" y="45" width="46" height="27" rx="8" fill="#657f80" stroke="#b0c1b7" stroke-width="2"/>
+    <rect x="68" y="45" width="46" height="27" rx="8" fill="#657f80" stroke="#b0c1b7" stroke-width="2"/>
+    <rect x="-80" y="-63" width="160" height="126" rx="28" fill="#1d3036" stroke="#bbccc4" stroke-width="3"/>
+    <path d="M-58-45H58V43H-58Z" fill="none" stroke="#7c9b9c" stroke-width="2"/>
+    <rect x="-39" y="-34" width="78" height="61" rx="25" fill="#496369" stroke="#a4bab5" stroke-width="2"/>
+    <circle cx="0" cy="-6" r="21" fill="#203238" stroke="#c0d1c7" stroke-width="2"/>
+    <path d="M-27 43H27" stroke="#a4bab5" stroke-width="4"/>
+  </g>
+  <text x="300" y="543" class="label" text-anchor="middle">WELDED KART</text>
+
+  <path d="M40 567H560" stroke="#355158" stroke-width="2"/>
+  <text x="40" y="600" class="tiny">02 / ELECTRICAL SIGNAL PATH</text>
+
+  <rect x="40" y="625" width="245" height="86" rx="4" fill="#192d35" stroke="#799ca4" stroke-width="2"/>
+  <text x="57" y="659" class="label">QUEST 3</text>
+  <text x="57" y="686" class="small">Object events</text>
+  <rect x="315" y="625" width="245" height="86" rx="4" fill="#18292e" stroke="#6f8c8a" stroke-width="2"/>
+  <text x="332" y="659" class="label">THROTTLE</text>
+  <text x="332" y="686" class="small">Driver input</text>
+  <path d="M162 711V746H300M438 711V746H300V760" class="line"/>
+  <path d="M294 752l6 8 6-8" class="line"/>
+
+  <rect x="100" y="760" width="400" height="78" rx="4" fill="#203238" stroke="#94b4b5" stroke-width="2"/>
+  <text x="122" y="793" class="label">RASPBERRY PI</text>
+  <text x="122" y="819" class="small">Intercepts and adjusts throttle signal</text>
+  <path d="M300 838V867" class="line"/>
+  <path d="M294 859l6 8 6-8" class="line"/>
+
+  <rect x="100" y="867" width="400" height="75" rx="4" fill="#18292e" stroke="#6f8c8a" stroke-width="2"/>
+  <text x="122" y="899" class="label">MOTOR CONTROLLER</text>
+  <text x="122" y="925" class="small">Receives adjusted command</text>
+  <path d="M300 942V969" class="line"/>
+  <path d="M294 961l6 8 6-8" class="line"/>
+
+  <rect x="100" y="969" width="400" height="75" rx="4" fill="#18292e" stroke="#6f8c8a" stroke-width="2"/>
+  <text x="122" y="1001" class="label">KART MOTOR</text>
+  <text x="122" y="1027" class="small">Physical speed response</text>
+</svg>

@@ -1,0 +1,36 @@
+---
+title: Augmented Reality Go-Kart
+description: A real go-kart on a virtual track. Objects seen through a Meta Quest 3 change the kart's motor response when it drives through them.
+tagline: A welded kart connecting mixed reality to motor control
+coverImage: /assets/ar-go-kart-system.svg
+animation: ar-go-kart
+tags: [mixed-reality, welding, electrical, raspberry-pi, controls]
+order: 10
+---
+
+## A physical kart on a virtual course
+
+I built an augmented reality go-kart experience around a **real, drivable kart**. A Meta Quest 3 places a virtual track and objects over the driver's view of the real world. Driving through an object changes the kart's speed response: one can increase it, while another can slow it down. The game event has a physical effect rather than only changing a display.
+
+## Building the kart
+
+I **welded the go-kart together** and handled its mechanical and electrical integration. The frame, motor hardware, and electronics all had to work as one physical build. Fabrication and wiring were part of the same project as the AR interaction.
+
+## Connecting the game to the throttle
+
+I worked on the kart's electrical system and **intercepted the throttle signal** before it reached the motor controller. A Raspberry Pi connects the virtual-object events to that control path. When the kart passes through an object in the Quest 3 experience, the Pi changes the command sent onward, so the motor controller responds with a faster or slower speed request.
+
+That required bringing together headset interactions, software, signal wiring, and motor control. The key interface is the handoff from a virtual event to a real electrical command; the rider still experiences the result through the kart itself.
+
+The schematic describes the control architecture, not a measured speed change or a claim about the system's operating limits.
+
+## Electrical schematic
+
+The KiCad drawing shows the battery and ESC power paths, the separate Raspberry Pi supply, and the throttle signal routed through an ADC, the Pi, and a DAC before reaching the motor controller. It also shows the direction and speed switch connections. This is a concept revision; the notes on the drawing identify checks still needed for the exact controller pinout and a defined neutral output during startup or a fault.
+
+<figure>
+  <a href="/assets/ar-go-kart-kicad-schematic.png" target="_blank" rel="noopener noreferrer" aria-label="Open the go-kart KiCad schematic at full resolution">
+    <img src="/assets/ar-go-kart-kicad-schematic.png" alt="KiCad concept schematic showing the go-kart battery, motor controller, Raspberry Pi, throttle ADC and DAC, and brushless motor connections" loading="lazy" />
+  </a>
+  <figcaption>Go-kart control schematic, KiCad concept revision. Select the image to read it at full resolution.</figcaption>
+</figure>
