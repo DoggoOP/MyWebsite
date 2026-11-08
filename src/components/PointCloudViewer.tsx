@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 import { Airflow, type FlowMode } from './airflow';
+import { ParticleLife, SPECIES, DEFAULT_FORCES } from './particleLife';
 
 interface PointCloudViewerProps {
   src: string;
@@ -62,6 +63,14 @@ function flowDirectionLabel(vertical: boolean, direction: 1 | -1) {
 
 export default function PointCloudViewer({ src, className, filter = true, airflow = false }: PointCloudViewerProps) {
   const [flowMode, setFlowMode] = useState<FlowMode>('vorticity');
+  const [sceneMode, setSceneMode] = useState<'particles' | 'flow'>('flow');
+  const sceneModeRef = useRef<'particles' | 'flow'>('flow');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [particleCount, setParticleCount] = useState(1300);
+  const [particleRadius, setParticleRadius] = useState(58);
+  const [particleStrength, setParticleStrength] = useState(1);
+  const [particleFriction, setParticleFriction] = useState(0.08);
+  const [forceMatrix, setForceMatrix] = useState(DEFAULT_FORCES.map(row => [...row]));
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<{
     animId?: number;
@@ -70,6 +79,7 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
   const statusRef = useRef<HTMLDivElement>(null);
   const uiRef = useRef<HTMLDivElement>(null);
   const flowControlRef = useRef<Airflow | null>(null);
+  const particleControlRef = useRef<ParticleLife | null>(null);
   const flowSpeedRef = useRef(1.25);
   const flowDirectionRef = useRef<1 | -1>(1);
   const speedReadoutRef = useRef<HTMLOutputElement>(null);
@@ -81,7 +91,9 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
     const s = stateRef.current;
     const flowCanvas = airflow ? document.getElementById('flow-canvas') as HTMLCanvasElement | null : null;
     const flow = flowCanvas ? new Airflow(flowCanvas) : null;
+    const particles = flowCanvas ? new ParticleLife(flowCanvas) : null;
     flowControlRef.current = flow;
+    particleControlRef.current = particles;
     flow?.setFlow(flowSpeedRef.current, flowDirectionRef.current);
     if (directionBtnRef.current && flow)
       directionBtnRef.current.textContent = flowDirectionLabel(flow.isVertical(), flowDirectionRef.current);
@@ -93,8 +105,13 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
     let frame = 0;
     let lastFlow = 0;
     const card = document.getElementById('bio-card');
-    const onPointerMove = (event: PointerEvent) => flow?.pointerMove(event.clientX, event.clientY);
-    const onPointerOut = (event: PointerEvent) => { if (!event.relatedTarget) flow?.pointerLeave(); };
+    const onPointerMove = (event: PointerEvent) => {
+      if (sceneModeRef.current === 'flow') flow?.pointerMove(event.clientX, event.clientY);
+      else particles?.pointerMove(event.clientX, event.clientY);
+    };
+    const onPointerOut = (event: PointerEvent) => {
+      if (!event.relatedTarget) { flow?.pointerLeave(); particles?.pointerLeave(); }
+    };
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerout', onPointerOut);
 
@@ -133,9 +150,13 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
         lastSortedQuat.copy(camera.quaternion);
       }
       if (flow && performance.now() - lastFlow > 30) {
-        if (++frame % 6 === 0) flow.updateObstacles(modelPositions, camera,
-          container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
-        flow.step();
+        if (++frame % 6 === 0) {
+          flow.updateObstacles(modelPositions, camera,
+            container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
+          particles?.setObstacles(flow.getObstacleMask());
+        }
+        if (sceneModeRef.current === 'flow') flow.step();
+        else particles?.step();
         lastFlow = performance.now();
       }
       renderer.render(scene, camera);
@@ -150,9 +171,11 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
       renderer.setSize(container.clientWidth, container.clientHeight);
       controls.handleResize();
       flow?.resize();
+      particles?.resize();
       if (directionBtnRef.current && flow)
         directionBtnRef.current.textContent = flowDirectionLabel(flow.isVertical(), flowDirectionRef.current);
       flow?.updateObstacles(modelPositions, camera, container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
+      if (flow) particles?.setObstacles(flow.getObstacleMask());
     };
     window.addEventListener('resize', onResize);
 
@@ -339,6 +362,7 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
         lastSortedPos.copy(camera.position);
         lastSortedQuat.copy(camera.quaternion);
         flow?.updateObstacles(modelPositions, camera, container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
+        if (flow) particles?.setObstacles(flow.getObstacleMask());
 
         const annGroup = new THREE.Group();
         for (const ann of data.annotations) {
@@ -383,6 +407,8 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
 
         if (statusRef.current) statusRef.current.style.display = 'none';
         if (uiRef.current) uiRef.current.style.display = 'flex';
+        const flowKey = document.getElementById('flow-key');
+        if (flowKey) flowKey.style.display = sceneModeRef.current === 'flow' ? '' : 'none';
       })
       .catch(err => {
         if (statusRef.current) statusRef.current.textContent = 'Error: ' + err.message;
@@ -393,6 +419,7 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerout', onPointerOut);
       flowControlRef.current = null;
+      particleControlRef.current = null;
       if (s.animId) cancelAnimationFrame(s.animId);
       controls.dispose();
       renderer.dispose();
@@ -424,22 +451,76 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
     if (high) high.textContent = mode === 'vorticity' ? '+' : mode === 'speed' ? 'fast' : 'high';
   };
 
+  const handleSceneMode = (mode: 'particles' | 'flow') => {
+    sceneModeRef.current = mode;
+    setSceneMode(mode);
+    setSettingsOpen(false);
+    flowControlRef.current?.pointerLeave();
+    particleControlRef.current?.pointerLeave();
+    const flowKey = document.getElementById('flow-key');
+    if (flowKey) flowKey.style.display = mode === 'flow' ? '' : 'none';
+  };
+
+  const handleMatrixCell = (from: number, to: number) => {
+    setForceMatrix(current => {
+      const updated = current.map(row => [...row]);
+      const value = updated[from][to];
+      updated[from][to] = value >= 0.75 ? -1 : Math.round((value + 0.5) * 2) / 2;
+      particleControlRef.current?.setForce(from, to, updated[from][to]);
+      return updated;
+    });
+  };
+
   return (
     <div className={`pcv-wrapper ${className || ''}`}>
       <div ref={mountRef} className="pcv-canvas" />
       <div ref={statusRef} className="pcv-status">Loading point cloud…</div>
-      {airflow && <div ref={uiRef} className="pcv-controls" style={{ display: 'none' }}>
-        <label className="pcv-flow-speed">Air speed
-          <input type="range" min="0.4" max="2" step="0.05" defaultValue="1.25" onChange={handleFlowSpeed} aria-label="Airflow speed" />
-          <output ref={speedReadoutRef}>1.25×</output>
-        </label>
-        <button onClick={handleFlowDirection} ref={directionBtnRef} className="pcv-btn" aria-label="Reverse airflow direction">Flow →</button>
-        <div className="pcv-flow-modes" role="group" aria-label="Flow visualization">
-          {(['pressure', 'vorticity', 'speed'] as FlowMode[]).map(mode =>
-            <button key={mode} className={`pcv-btn ${flowMode === mode ? 'is-active' : ''}`} aria-pressed={flowMode === mode} onClick={() => handleFlowMode(mode)}>{mode === 'pressure' ? 'Pressure' : mode === 'vorticity' ? 'Vorticity' : 'Speed'}</button>
-          )}
+      {airflow && <>
+        {sceneMode === 'particles' && settingsOpen && <aside className="pcv-particle-settings" aria-label="Particle interaction settings">
+          <div className="pcv-settings-heading"><span>Particle settings</span><button onClick={() => setSettingsOpen(false)} aria-label="Close particle settings">×</button></div>
+          <label>Count <input type="range" min="300" max="3000" step="100" value={particleCount} onChange={event => { const value = Number(event.target.value); setParticleCount(value); particleControlRef.current?.setCount(value); }} /><output>{particleCount}</output></label>
+          <label>Radius <input type="range" min="25" max="100" step="1" value={particleRadius} onChange={event => { const value = Number(event.target.value); setParticleRadius(value); particleControlRef.current?.setRadius(value); }} /><output>{particleRadius}px</output></label>
+          <label>Force <input type="range" min="0.2" max="2" step="0.05" value={particleStrength} onChange={event => { const value = Number(event.target.value); setParticleStrength(value); particleControlRef.current?.setStrength(value); }} /><output>{particleStrength.toFixed(2)}×</output></label>
+          <label>Friction <input type="range" min="0.02" max="0.4" step="0.01" value={particleFriction} onChange={event => { const value = Number(event.target.value); setParticleFriction(value); particleControlRef.current?.setFriction(value); }} /><output>{particleFriction.toFixed(2)}</output></label>
+          <div className="pcv-matrix-title">Interaction matrix <span>tap a cell to adjust its force</span></div>
+          <div className="pcv-matrix" role="group" aria-label="Species interaction matrix">
+            <span className="pcv-matrix-corner" />
+            {SPECIES.map(species => <span key={`head-${species.name}`} className="pcv-species-dot" style={{ background: species.color }} title={species.name} />)}
+            {SPECIES.map((from, row) => <div className="pcv-matrix-row" key={from.name}>
+              <span className="pcv-species-dot" style={{ background: from.color }} title={from.name} />
+              {SPECIES.map((to, col) => {
+                const value = forceMatrix[row][col];
+                return <button key={to.name} type="button" onClick={() => handleMatrixCell(row, col)}
+                  className={`pcv-matrix-cell ${value > 0.2 ? 'positive' : value < -0.2 ? 'negative' : 'neutral'}`}
+                  aria-label={`${from.name} toward ${to.name}: ${value.toFixed(2)}; change force`}
+                  title={`${from.name} → ${to.name}: ${value.toFixed(2)}`}>
+                  {value > 0.2 ? '+' : value < -0.2 ? '−' : '·'}
+                </button>;
+              })}
+            </div>)}
+          </div>
+        </aside>}
+        <div ref={uiRef} className="pcv-controls" style={{ display: 'none' }}>
+          <div className="pcv-scene-switch" role="group" aria-label="Simulation">
+            <button className={`pcv-btn ${sceneMode === 'particles' ? 'is-active' : ''}`} aria-pressed={sceneMode === 'particles'} onClick={() => handleSceneMode('particles')}>Particles</button>
+            <button className={`pcv-btn ${sceneMode === 'flow' ? 'is-active' : ''}`} aria-pressed={sceneMode === 'flow'} onClick={() => handleSceneMode('flow')}>Flow</button>
+          </div>
+          {sceneMode === 'particles'
+            ? <button className={`pcv-btn ${settingsOpen ? 'is-active' : ''}`} aria-expanded={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}>Settings</button>
+            : <>
+                <label className="pcv-flow-speed">Air speed
+                  <input type="range" min="0.4" max="2" step="0.05" defaultValue={flowSpeedRef.current} onChange={handleFlowSpeed} aria-label="Airflow speed" />
+                  <output ref={speedReadoutRef}>{flowSpeedRef.current.toFixed(2)}×</output>
+                </label>
+                <button onClick={handleFlowDirection} ref={directionBtnRef} className="pcv-btn" aria-label="Reverse airflow direction">{flowDirectionLabel(flowControlRef.current?.isVertical() ?? false, flowDirectionRef.current)}</button>
+                <div className="pcv-flow-modes" role="group" aria-label="Flow visualization">
+                  {(['pressure', 'vorticity', 'speed'] as FlowMode[]).map(mode =>
+                    <button key={mode} className={`pcv-btn ${flowMode === mode ? 'is-active' : ''}`} aria-pressed={flowMode === mode} onClick={() => handleFlowMode(mode)}>{mode === 'pressure' ? 'Pressure' : mode === 'vorticity' ? 'Vorticity' : 'Speed'}</button>
+                  )}
+                </div>
+              </>}
         </div>
-      </div>}
+      </>}
     </div>
   );
 }

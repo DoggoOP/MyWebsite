@@ -112,6 +112,8 @@ export class Airflow {
 
   setMode(mode: FlowMode) { this.mode = mode; }
 
+  getObstacleMask() { return { solid: this.solid, w: this.w, h: this.h }; }
+
   isVertical() { return this.vertical; }
 
   setFlow(speed: number, direction: 1 | -1) {

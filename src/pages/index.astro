@@ -9,7 +9,7 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     <!-- 3D viewer sits to the right of the bio on desktop. -->
     <section class="landing-viewer">
       <PointCloudViewer src="/assets/3dImage-clean.lssnap" airflow={true} client:only="react" />
-      <div class="flow-key" aria-hidden="true"><span id="flow-key-mode">Vorticity</span><i class="pressure-low"></i><span id="flow-key-low">−</span><i class="pressure-high"></i><span id="flow-key-high">+</span></div>
+      <div id="flow-key" class="flow-key" style="display: none" aria-hidden="true"><span id="flow-key-mode">Vorticity</span><i class="pressure-low"></i><span id="flow-key-low">−</span><i class="pressure-high"></i><span id="flow-key-high">+</span></div>
     </section>
 
     <!-- Bio card -->
@@ -108,7 +108,7 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     position: fixed;
     z-index: 12;
     left: 28px;
-    bottom: 16px;
+    bottom: 66px;
     display: flex;
     gap: 8px;
     align-items: center;
