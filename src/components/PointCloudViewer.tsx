@@ -7,6 +7,7 @@ import { ParticleLife, SPECIES, DEFAULT_FORCES } from './particleLife';
 
 interface PointCloudViewerProps {
   src: string;
+  axesSrc?: string;
   className?: string;
   filter?: boolean;
   airflow?: boolean;
@@ -61,7 +62,34 @@ function flowDirectionLabel(vertical: boolean, direction: 1 | -1) {
   return `Flow ${vertical ? (direction === 1 ? '↓' : '↑') : (direction === 1 ? '→' : '←')}`;
 }
 
-export default function PointCloudViewer({ src, className, filter = true, airflow = false }: PointCloudViewerProps) {
+async function fetchAsset(url: string, signal: AbortSignal, onProgress: (loaded: number, total: number) => void) {
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`Could not load ${url}`);
+  const total = Number(response.headers.get('content-length')) || 0;
+  onProgress(0, total);
+  if (!response.body) {
+    const buffer = await response.arrayBuffer();
+    onProgress(buffer.byteLength, total || buffer.byteLength);
+    return buffer;
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let loaded = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.byteLength;
+    onProgress(loaded, total);
+  }
+  const bytes = new Uint8Array(loaded);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  onProgress(loaded, total || loaded);
+  return bytes.buffer;
+}
+
+export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfels.bin', className, filter = true, airflow = false }: PointCloudViewerProps) {
   const [flowMode, setFlowMode] = useState<FlowMode>('vorticity');
   const [sceneMode, setSceneMode] = useState<'particles' | 'flow'>('flow');
   const sceneModeRef = useRef<'particles' | 'flow'>('flow');
@@ -104,6 +132,7 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
     const lastSortedQuat = new THREE.Quaternion();
     let frame = 0;
     let lastFlow = 0;
+    let modelReady = false;
     const card = document.getElementById('bio-card');
     const onPointerMove = (event: PointerEvent) => {
       if (sceneModeRef.current === 'flow') flow?.pointerMove(event.clientX, event.clientY);
@@ -149,7 +178,7 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
         lastSortedPos.copy(camera.position);
         lastSortedQuat.copy(camera.quaternion);
       }
-      if (flow && performance.now() - lastFlow > 30) {
+      if (flow && performance.now() - lastFlow > (modelReady ? 30 : 90)) {
         if (++frame % 6 === 0) {
           flow.updateObstacles(modelPositions, camera,
             container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
@@ -179,12 +208,35 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
     };
     window.addEventListener('resize', onResize);
 
-    Promise.all([fetch(src), fetch('/assets/3dImage-surfels.bin')])
-      .then(async ([scanResponse, axesResponse]) => {
-        if (!scanResponse.ok || !axesResponse.ok) throw new Error('Scan asset could not be loaded');
-        return [await scanResponse.arrayBuffer(), await axesResponse.arrayBuffer()] as const;
-      })
-      .then(([buffer, axesBuffer]) => {
+    const loadAbort = new AbortController();
+    const loaded = [0, 0];
+    const totals = [0, 0];
+    const loadingStatus = document.getElementById('hero-load-status');
+    const loadingPercent = document.getElementById('hero-load-percent');
+    const loadingProgress = document.getElementById('hero-load-progress') as HTMLProgressElement | null;
+    const showProgress = (percent: number) => {
+      if (statusRef.current) statusRef.current.textContent = `Loading 3D scan · ${percent}%`;
+      if (loadingPercent) loadingPercent.textContent = `${percent}%`;
+      if (loadingProgress) loadingProgress.value = percent;
+    };
+    const reportProgress = (index: number) => (bytes: number, total: number) => {
+      loaded[index] = bytes;
+      totals[index] = total || totals[index];
+      // Some hosts stream assets without Content-Length. Keep the bar moving in
+      // that case, then use the exact size when each download finishes.
+      const estimatedTotal = totals.reduce((sum, size, i) =>
+        sum + (size || Math.max(loaded[i] + 256 * 1024, 512 * 1024)), 0);
+      const percent = Math.min(90, Math.round((loaded[0] + loaded[1]) / estimatedTotal * 90));
+      showProgress(percent);
+    };
+
+    Promise.all([
+      fetchAsset(src, loadAbort.signal, reportProgress(0)),
+      fetchAsset(axesSrc, loadAbort.signal, reportProgress(1)),
+    ])
+      .then(async ([buffer, axesBuffer]) => {
+        showProgress(94);
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
         const data = parseLssnap(buffer);
         const axisCount = new DataView(axesBuffer).getUint32(0, true);
         if (axisCount !== data.vertexCount) throw new Error('Scan and splat geometry do not match');
@@ -405,16 +457,22 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
         }
         scene.add(annGroup);
 
+        modelReady = true;
+        showProgress(100);
         if (statusRef.current) statusRef.current.style.display = 'none';
+        if (loadingStatus) loadingStatus.style.display = 'none';
         if (uiRef.current) uiRef.current.style.display = 'flex';
         const flowKey = document.getElementById('flow-key');
         if (flowKey) flowKey.style.display = sceneModeRef.current === 'flow' ? '' : 'none';
       })
       .catch(err => {
+        if (err.name === 'AbortError') return;
         if (statusRef.current) statusRef.current.textContent = 'Error: ' + err.message;
+        if (loadingStatus) loadingStatus.textContent = '3D scan could not be loaded';
       });
 
     return () => {
+      loadAbort.abort();
       window.removeEventListener('resize', onResize);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerout', onPointerOut);
@@ -425,7 +483,7 @@ export default function PointCloudViewer({ src, className, filter = true, airflo
       renderer.dispose();
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
-  }, [src, filter, airflow]);
+  }, [src, axesSrc, filter, airflow]);
 
   const handleFlowSpeed = (event: React.ChangeEvent<HTMLInputElement>) => {
     flowSpeedRef.current = Number(event.target.value);

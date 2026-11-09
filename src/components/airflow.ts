@@ -55,7 +55,8 @@ export class Airflow {
     const width = window.innerWidth, height = window.innerHeight;
     if (width === this.screenW && height === this.screenH) return;
     this.screenW = width; this.screenH = height;
-    this.vertical = width <= 900 && height > width;
+    // Follow screen orientation, including portrait tablets and tall windows.
+    this.vertical = height > width;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.canvas.width = Math.round(width * dpr);
     this.canvas.height = Math.round(height * dpr);
