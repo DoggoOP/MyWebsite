@@ -1,0 +1,299 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const sailing = [
+  { src: '/assets/about/sailing-29er.jpg', alt: 'A 29er skiff sailing upwind with the crew out on the trapeze', caption: '29er, 2024 US Sailing Youth Championship. Photo: Lexi Pline / US Sailing', wide: true },
+  { src: '/assets/about/sailing-hkg.jpg', alt: 'Ethan hiking out on a dinghy with an HKG sail number', caption: 'Racing for Hong Kong.' },
+  { src: '/assets/about/sailing-prizegiving.jpg', alt: 'Ethan holding a framed award at a regatta prize-giving', caption: 'Prize-giving at a Hong Kong regatta.' },
+];
+
+const pieces = [
+  {
+    slug: 'turtles-grace', images: 2, title: "Turtle's Grace", year: 2023, size: '58 × 49 × 10 cm',
+    materials: 'Copper clay, slab built, fishnet texture, iron oxide, high-fire glaze',
+    note: 'Made after visiting a sea turtle conservation site in Bali.',
+  },
+  {
+    slug: 'tidal-rhythm', images: 1, title: 'Tidal Rhythm', year: 2024, size: '28 × 32 × 1 cm',
+    materials: 'Porcelain, carved, celadon glaze',
+    note: 'A carved relief after The Great Wave off Kanagawa, made on a trip to Jingdezhen. The glaze pools in the grooves.',
+  },
+  {
+    slug: 'rocky-ocean', images: 2, title: 'Rocky Ocean', year: 2023, size: '31 × 26 × 24 cm',
+    materials: 'Copper clay, white stoneware, iron oxide, high-fire glaze in five blues',
+    note: 'A wave breaking on rock, with barnacles and hatchling turtles at the base. I textured the surface with a tree branch.',
+  },
+  {
+    slug: 'glossed-coral', images: 3, title: 'Glossed Coral', year: 2023, size: '24 × 23 × 12 cm',
+    materials: 'Copper clay, porcelain slip, carved, high-fire glaze, melted glass',
+    note: 'On a dive I saw coral that looked bleached from the outside but was still alive inside. The melted glass is the inside.',
+  },
+  {
+    slug: 'coral-transition', images: 3, title: 'Coral Transition', year: 2024, size: '22 × 22 × 19 cm',
+    materials: 'Copper clay, white stoneware, hand built, iron oxide, high-fire glaze',
+    note: 'A turtle swims out of a living reef and into a bleached one.',
+  },
+  {
+    slug: 'natural-or-unnatural', images: 3, title: 'Natural or Unnatural?', year: 2024, size: '9 × 12 × 5 cm',
+    materials: 'Porcelain, hand built and 3D printed, carved',
+    note: 'Some of these corals are sculpted by hand and some are 3D printed. Try to guess which.',
+  },
+  {
+    slug: 'single-wave', images: 2, title: 'Single Wave', year: 2023, size: '29 × 14 × 6 cm',
+    materials: 'White stoneware, slip, high-fire glaze, melted glass, sand',
+    note: 'Sand and glass, two things I run into every time I sail, fired into a wave.',
+  },
+];
+---
+
+<BaseLayout title="About · Ethan Kong" description="Ethan Kong on sailing for Hong Kong, ceramics, and how both led to aerospace.">
+  <main class="page about">
+    <h1 class="display page-title">About</h1>
+    <div class="prose lede">
+      <p>
+        I grew up in Hong Kong and went to HKIS before Stanford. Outside of engineering,
+        the two things I've spent the most time on are sailing and clay.
+      </p>
+    </div>
+
+    <section class="section" aria-labelledby="sailing">
+      <h2 id="sailing" class="display section-title">Sailing</h2>
+      <div class="prose text">
+        <p>
+          I started at ten in an Optimist, the little single-handed boat most kids learn in.
+          A few years later my sister Chloe and I moved up to the 29er, a two-person skiff.
+          We raced on Hong Kong's national team and at regattas overseas.
+        </p>
+        <p>
+          Sailing with my sister taught me more about patience than anything else. In a 29er
+          you get about a second to agree on a tack, so you learn to talk less, trust more,
+          and reset quickly after a bad one.
+        </p>
+        <p>
+          I ran the HKIS sailing club and taught with Sailability Hong Kong, which gets people
+          with disabilities out on the water. For one student I 3D printed a tactile model of
+          a Hansa dinghy so they could learn the boat by touch before taking the helm.
+        </p>
+        <p>
+          Sailing is also why I study aerospace. Wanting to know why a sail works led me to
+          fluid dynamics, then to <a href="/projects/sailing-rl">a lattice-Boltzmann sail model
+          and an agent that learned to tack</a>, and later to a camber-changing sail on the
+          <a href="/projects/solar-car">solar car</a>. The wind tunnel on my
+          <a href="/">home page</a> runs the same kind of sim.
+        </p>
+      </div>
+
+      <div class="photos">
+        {sailing.map(p => (
+          <figure class:list={['photo', p.wide && 'photo-wide']}>
+            <img src={p.src} alt={p.alt} loading="lazy" decoding="async" />
+            <figcaption>{p.caption}</figcaption>
+          </figure>
+        ))}
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="ceramics">
+      <h2 id="ceramics" class="display section-title">Ceramics</h2>
+      <div class="prose text">
+        <p>
+          I've worked with clay since I was seven. In high school my portfolio was about the
+          ocean: waves, coral and sea turtles, mostly things I'd seen from a boat or on a dive.
+        </p>
+        <p>
+          I like the parts of ceramics that feel like engineering, like how clays, glazes and
+          oxides react in the kiln, and shaping a form is a lot like iterating on a CAD model,
+          just with my hands. I also like the part that doesn't. You load the kiln and accept
+          whatever comes out.
+        </p>
+      </div>
+
+      <ul class="pieces">
+        {pieces.map(piece => (
+          <li class="piece" data-piece>
+            <button class="piece-image" type="button" aria-label={piece.images > 1 ? `Next photo of ${piece.title}` : piece.title} disabled={piece.images === 1}>
+              {Array.from({ length: piece.images }, (_, i) => (
+                <img
+                  src={`/assets/about/${piece.slug}-${i + 1}.jpg`}
+                  alt={i === 0 ? `${piece.title}, ceramic sculpture` : `${piece.title}, detail`}
+                  loading="lazy"
+                  decoding="async"
+                  class:list={[i === 0 && 'is-shown']}
+                />
+              ))}
+              {piece.images > 1 && (
+                <span class="dots" aria-hidden="true">
+                  {Array.from({ length: piece.images }, (_, i) => <i class:list={[i === 0 && 'is-on']} />)}
+                </span>
+              )}
+            </button>
+            <div class="piece-head">
+              <h3 class="display piece-title">{piece.title}</h3>
+              <span class="piece-year">{piece.year}</span>
+            </div>
+            <p class="piece-materials">{piece.materials} · {piece.size}</p>
+            <p class="piece-note">{piece.note}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <p class="prose sign-off">
+      If you sail, throw, or want to talk about either, <a href="mailto:ethank07@stanford.edu">email me</a>.
+    </p>
+  </main>
+</BaseLayout>
+
+<style>
+  .lede p {
+    max-width: 640px;
+    color: var(--text-secondary);
+    font-size: 18px;
+    line-height: 1.65;
+  }
+
+  .section { margin-top: 96px; }
+  .section-title {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+  .text { max-width: 640px; }
+  .text p {
+    color: var(--text-secondary);
+    font-size: 16px;
+    line-height: 1.75;
+  }
+  .text p + p { margin-top: 16px; }
+
+  .photos {
+    display: grid;
+    grid-template-columns: 1.55fr 1fr 1fr;
+    gap: 16px;
+    margin-top: 48px;
+  }
+  .photo img {
+    display: block;
+    width: 100%;
+    height: 380px;
+    object-fit: cover;
+    border-radius: var(--radius-card);
+    background: var(--bg-card);
+  }
+  .photo figcaption {
+    margin-top: 10px;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .pieces {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 56px 28px;
+    margin-top: 48px;
+  }
+  .piece-image {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    border-radius: var(--radius-card);
+    background: #d9d9d6;
+  }
+  .piece-image:not(:disabled) { cursor: pointer; }
+  .piece-image:disabled { cursor: default; }
+  .piece-image img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity .35s ease;
+  }
+  .piece-image img.is-shown { opacity: 1; }
+  .dots {
+    position: absolute;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: rgba(15, 19, 20, .45);
+  }
+  .dots i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .45);
+    transition: background .2s;
+  }
+  .dots i.is-on { background: #fff; }
+
+  .piece-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .piece-title { font-size: 16px; }
+  .piece-year { color: var(--text-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .piece-materials {
+    margin-top: 6px;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .piece-note {
+    margin-top: 10px;
+    color: var(--text-secondary);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .sign-off {
+    margin-top: 96px;
+    color: var(--text-secondary);
+    font-size: 16px;
+  }
+
+  @media (max-width: 900px) {
+    .photos { grid-template-columns: 1fr 1fr; }
+    .photo-wide { grid-column: 1 / -1; }
+    .photo img { height: 320px; }
+  }
+  @media (max-width: 600px) {
+    .section { margin-top: 72px; }
+    .photo img { height: 240px; }
+    .pieces { grid-template-columns: 1fr; gap: 48px; }
+  }
+</style>
+
+<script>
+  function initPieces() {
+    document.querySelectorAll<HTMLElement>('[data-piece]').forEach(piece => {
+      if (piece.dataset.ready) return;
+      piece.dataset.ready = 'true';
+      const button = piece.querySelector<HTMLButtonElement>('.piece-image');
+      const images = [...piece.querySelectorAll('img')];
+      const dots = [...piece.querySelectorAll('.dots i')];
+      if (!button || images.length < 2) return;
+      let index = 0;
+      button.addEventListener('click', () => {
+        images[index].classList.remove('is-shown');
+        dots[index]?.classList.remove('is-on');
+        index = (index + 1) % images.length;
+        images[index].classList.add('is-shown');
+        dots[index]?.classList.add('is-on');
+      });
+    });
+  }
+  document.addEventListener('astro:page-load', initPieces);
+</script>

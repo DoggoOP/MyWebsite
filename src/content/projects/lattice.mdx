@@ -1,7 +1,7 @@
 ---
 title: Lattice
 description: Distributed multi-sensor volumetric capture system reconstructing navigable 3D point clouds for desktop, web, and HoloLens — shortlisted for Grand Prize at TreeHacks 2026.
-tagline: 4D volumetric telepresence — TreeHacks 2026
+tagline: 4D volumetric telepresence, TreeHacks 2026
 coverImage: /assets/tempo3.png
 animation: lattice
 date: "2026-02-01"
@@ -20,7 +20,7 @@ import PointCloudViewer from '../../components/PointCloudViewer.tsx';
 
 ## Overview
 
-Lattice is a real-time volumetric capture + playback platform that turns physical moments into saveable, navigable 6D media built at TreeHacks 2026, where it was shortlisted for the Grand Prize. You can move around and interact with an object in front of you, not a video on a screen.
+Lattice is a real-time volumetric capture + playback platform that turns physical moments into saveable, navigable 6D media built at TreeHacks 2026, where Lattice was shortlisted for the Grand Prize. You can move around and interact with an object in front of you, not a video on a screen.
 
 Lattice connects capture, reconstruction, data transport, and interaction all into one continuous pipeline:
 
@@ -43,11 +43,11 @@ On immersive devices like the HoloLens 2 (AR), the user's interaction with the a
 </div>
 
 ## Inspiration
-For nearly two centuries, cameras have helped us record history, but they’ve always flattened it. Even with monumental improvements in the recording quality (Higher resolution, 360°, spatial audio), videos still force you to stand where the camera stood. You can watch the past, but you can’t explore it, question it, inspect it, interact with it, or truly step back into it.
+For nearly two centuries, cameras have helped us record history, but they’ve always flattened what they record. Even with monumental improvements in the recording quality (Higher resolution, 360°, spatial audio), videos still force you to stand where the camera stood. You can watch the past, but you can’t walk around in a recording, inspect a detail, interact with a scene, or truly step back into a moment.
 
-Lattice treats recording time and history as a spatial endeavour. It captures moments as full 3D environments that can be revisited, navigated, and projected back into the world through holograms and 3D tracking. Instead of replaying footage, you can relive events and explore them as a navigable space.
+Lattice treats recording time and history as a spatial endeavour, capturing moments as full 3D environments that can be revisited, navigated, and projected back into the world through holograms and 3D tracking. Instead of replaying footage, you can relive events and explore them as a navigable space.
 
-Our goal isn’t just better media. It’s building a long-term system for preserving reality itself, so future generations can experience moments in history, science, and everyday life as places, not recordings.
+Our goal is a long-term system for preserving real events, so future generations can experience moments in history, science, and everyday life as places, not recordings.
 
 ## Key Capabilities
 1. Live streaming of holographic capture to any screen
@@ -79,7 +79,7 @@ Our goal isn’t just better media. It’s building a long-term system for prese
 - 2D displays: uses Leap Motion for hand tracking to rotate/translate/scale/scrub
 - Mobile/web: touch gestures for zoom/rotate/translate
 
-## How we Built it
+## How we built Lattice
 ### Core Hardware:
 
 - 3 Microsoft Xbox Kinect One v2 Sensors
@@ -110,27 +110,27 @@ Lattice uses the Kinects for their LiDAR + RGB capture capabilities [6]. Three s
 - Hand tracking: Ultraleap Leap Motion, Ultraleap Hyperion
 
 ## Challenges we ran into
-- Kinect v2 on Windows SDK allows only one sensor per machine. This could be bypassed on a lower level by using a different OS, but the tradeoff was not worth it for the rest of development, so we had to run a distributed topology with multiple client laptops plus a central server.
+- Kinect v2 on Windows SDK allows only one sensor per machine. This could be bypassed on a lower level by using a different OS, but the tradeoff did not pay off for the rest of development, so we had to run a distributed topology with multiple client laptops plus a central server.
 - Calibration matrix transformation rotations had some trouble with the marker being placed in certain directions (for example, the Orthogonal Procrustes method didn't account for the images being 180 degrees apart). We implemented functions to reject bad rotation candidates, and add consistency checks to avoid flipped alignment states.
 - Sensor interference, especially during calibration: The LiDAR sensors in the Kinects would sometimes interfere with one another if not positioned well enough, leading to inaccurate or slower detection
 - Handling high-frequency frame ingress, point-cloud fusion, temporal buffering, and compression, simultaneously pushed the RAM and VRAM, which caused a lot of instability and system issues, like momentary freezes and crashes. We had to implement memory discipline.
-- Managed/unmanaged interop and Garbage collection stalls: our stack crosses C++ and C# , so object lifetime management became very complex. Garbage collection sometimes paused randomly, and we suspect it was caused by pinned buffers, native pointer handoff, and frequent allocations, so we had to minimize allocation churn and aggressively reuse buffers to prevent visible playback hitches.
+- Managed/unmanaged interop and Garbage collection stalls: our stack crosses C++ and C# , so object lifetime management became very complex. Garbage collection sometimes paused randomly, and we suspect the cause was pinned buffers, native pointer handoff, and frequent allocations, so we had to minimize allocation churn and aggressively reuse buffers to prevent visible playback hitches.
 - Point processing performance depended heavily on memory layout and SIMD friendliness, and our initial, naive, structures killed cache efficiency. We improved vectorized execution paths, and reduced RAM traversal during filtering, fusion, and culling.
 - To keep interaction real-time, we needed aggressive frustum culling and LOD (level of detail). Finding the balance was hard, since being too aggressive made the clouds look unstable, but culling too little heavily increased latency.
 - The server laptop needs speed and significant computing power for fusing and rendering the multiple point cloud streams, so we had to optimize kernel granularity, batch sizes, and transfer timing so that GPU acceleration effectively improved latency.
 - When a previous stage outruns another the next one, the whole pipeline fails; Camera ingest, server fusion, compression, and client playback each had different throughput ceilings, so we implemented queue limits, ring buffers, a dropped certain frames, to prevent buffer blowups and cascading stalls.
-- Although we knew it since the inception of the idea, cross-platform output modules were essentially separate products that were unrelated, meaning programming all of them took a long time. The server creates one volumetric reconstruction, but it has to be serialized and rendered differently for each platform: Hololens, browser/mobile, desktop + Leap Motion all required unique transport, rendering, input mapping, and buffering logic
+- We knew from the start that cross-platform output modules were essentially separate, unrelated products, and programming all of them took a long time. The server creates one volumetric reconstruction, which has to be serialized and rendered differently for each platform: Hololens, browser/mobile, desktop + Leap Motion all required unique transport, rendering, input mapping, and buffering logic
 
 ## Use cases
 A few examples:
 
-- Education: Teachers can stream a live scene to any screen, and students can watch it live or replay the same capture. Both teachers and students can annotate any points of curiosity during live stream
+- Education: Teachers can stream a live scene to any screen, and students can watch live or replay the same capture. Both teachers and students can annotate any points of curiosity during live stream
 - Science and research labs: Record experiments, use diffs view to detect changes between baseline different state
 - Industrial inspection: capture known "good" reference states, then run diff view during checks
 - Sports/entertainment: rewind and view from any angle
 - Design iteration/prototyping physical work: diffs view would be useful for art, like pottery, sculpting, etc.)
 - Law enforcement: use replay or diffs view to see any changes in evidence at scenes.
-There are many more use cases; 3D telepresence and reality replay is not limited to the industries of today. It will become a whole field of its own, in the same way that peripherals like the mouse revolutionized the way we navigate digital technology.
+There are many more use cases; 3D telepresence and reality replay is not limited to the industries of today. Volumetric capture will become a whole new field, in the same way that peripherals like the mouse revolutionized the way we navigate digital technology.
 
 ### Accomplishments that we are proud of
 - Built a fully working volumetric display and replay system

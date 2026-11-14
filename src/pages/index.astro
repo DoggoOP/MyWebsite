@@ -5,111 +5,75 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
 
 <BaseLayout title="Ethan Kong">
   <div id="hero-load-status" class="hero-load-status" role="status" aria-live="polite">
-    <span>Loading 3D scene</span>
-    <span id="hero-load-percent">0%</span>
-    <progress id="hero-load-progress" value="0" max="100" aria-label="3D scene loading progress"></progress>
+    <progress id="hero-load-progress" value="0" max="100" aria-label="3D scan loading progress"></progress>
+    <span class="visually-hidden">Loading 3D scan <span id="hero-load-percent">0%</span></span>
   </div>
   <canvas id="flow-canvas" class="flow-canvas" aria-hidden="true"></canvas>
   <main class="landing">
-    <!-- 3D viewer sits to the right of the bio on desktop. -->
-    <section class="landing-viewer">
+    <section class="landing-viewer" aria-label="3D scan of Ethan in a simulated wind tunnel">
       <PointCloudViewer src="/assets/3dImage-home.lssnap" axesSrc="/assets/3dImage-home-surfels.bin" filter={false} airflow={true} client:only="react" />
-      <div id="flow-key" class="flow-key" style="display: none" aria-hidden="true"><span id="flow-key-mode">Vorticity</span><i class="pressure-low"></i><span id="flow-key-low">−</span><i class="pressure-high"></i><span id="flow-key-high">+</span></div>
     </section>
 
-    <!-- Bio card -->
     <section class="landing-bio">
-      <div class="bio-card" id="bio-card">
-        <p class="bio-greeting">
-          hi i'm <span class="hero-name">ETHAN KONG</span>
-        </p>
-        <p class="bio-text bio-text-desktop">
-          I grew up in Hong Kong and chose to study Aeronautics and Astronautics
-          at Stanford for its systems-level approach to design. I like working
-          through a whole system, from its physics and mechanics to its electronics
-          and software.
-        </p>
-        <p class="bio-text bio-text-desktop">
-          I work with the Plasma Physics Lab, Solar Car Project, Stanford Student
-          Robotics, and Stanford Space Initiative. Away from projects, I sail and
-          throw pottery on the wheel.
-        </p>
-        <p class="bio-text bio-text-mobile">
-          I grew up in Hong Kong and study AeroAstro at Stanford. I build across
-          mechanics, electronics, and software. Outside projects, I sail and make pottery.
-        </p>
-
-        <p class="bio-contact-label">Feel free to reach out:</p>
-
-        <div class="bio-contacts">
-          <a href="mailto:ethank07@stanford.edu" class="contact-icon" aria-label="Email">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <rect x="2" y="4" width="20" height="16" rx="2"/>
-              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-            </svg>
-          </a>
-          <a href="https://github.com/DoggoOP" target="_blank" class="contact-icon" aria-label="GitHub">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
-            </svg>
-          </a>
-          <a href="https://www.linkedin.com/in/ethank07/" target="_blank" class="contact-icon" aria-label="LinkedIn">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-            </svg>
-          </a>
-          <a href="/assets/resume.pdf" download="Ethan's resume.pdf" class="contact-icon" aria-label="Ethan's resume">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14,2 14,8 20,8"/>
-              <line x1="12" y1="18" x2="12" y2="12"/>
-              <polyline points="9,15 12,18 15,15"/>
-            </svg>
-          </a>
+      <!-- The circle is also the cylinder the sim's air flows around. -->
+      <div class="bio" id="bio-card">
+        <div class="bio-inner">
+          <h1 class="bio-name">Hi, I'm Ethan</h1>
+          <div class="prose bio-text">
+            <p>
+              I grew up in Hong Kong and chose to study Aero/Astro at Stanford because
+              no other engineering field requires as many disciplines<span class="wide-only">. Getting
+              anything to fly takes fluids, structures, controls, electronics and code</span>.<span class="wide-only">
+              I'm building <a href="/projects/lattice">Lattice</a>, 3D capture for robotics,
+              and work with the <a href="/projects/solar-car">Solar Car Project</a> and the
+              <a href="/projects/ion-thruster">Plasma Physics Lab</a>.</span>
+            </p>
+            <p>
+              I <a class="peek" href="/about#sailing">sailed for the national team<span class="peek-card" aria-hidden="true"><img src="/assets/about/peek-sailing.jpg" alt="" width="480" height="311" /></span></a>
+              growing up, which is how I got into fluid dynamics. The air here is a
+              <span class="nowrap">lattice-Boltzmann</span> sim<span class="wide-only">, the
+              same method I first used <a href="/projects/sailing-rl">to model a sail</a></span>.
+              <span class="wide-only">When I'm not sailing, I'm probably
+              <a class="peek" href="/about#ceramics">making pottery<span class="peek-card" aria-hidden="true"><img src="/assets/about/peek-pottery.jpg" alt="" width="480" height="313" /></span></a>.</span>
+            </p>
+          </div>
+          <nav class="bio-links" aria-label="Contact">
+            <a class="text-link" href="mailto:ethank07@stanford.edu">Email</a>
+            <a class="text-link" href="https://github.com/DoggoOP" target="_blank" rel="noopener">GitHub</a>
+            <a class="text-link" href="https://www.linkedin.com/in/ethank07/" target="_blank" rel="noopener">LinkedIn</a>
+            <a class="text-link" href="/assets/resume.pdf" target="_blank" rel="noopener">Resume</a>
+          </nav>
         </div>
-
-        <button data-open-projects class="bio-projects-link">
-          View Projects
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </button>
       </div>
     </section>
   </main>
 </BaseLayout>
 
 <style>
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
   .hero-load-status {
     position: fixed;
-    top: 56px;
+    top: var(--nav-h);
     left: 0;
     right: 0;
     z-index: 90;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    background: var(--bg-base);
-    color: var(--text-secondary);
-    font: 10px var(--font-mono);
-    letter-spacing: .03em;
+    height: 2px;
     pointer-events: none;
   }
   .hero-load-status progress {
-    position: absolute;
-    bottom: 0;
-    left: 0;
+    display: block;
     width: 100%;
     height: 2px;
     appearance: none;
     border: 0;
-    background: var(--border-subtle);
+    background: transparent;
   }
-  .hero-load-status progress::-webkit-progress-bar { background: var(--border-subtle); }
-  .hero-load-status progress::-webkit-progress-value { background: var(--accent-cyan); }
-  .hero-load-status progress::-moz-progress-bar { background: var(--accent-cyan); }
+  .hero-load-status progress::-webkit-progress-bar { background: transparent; }
+  .hero-load-status progress::-webkit-progress-value { background: var(--accent); transition: width .2s; }
+  .hero-load-status progress::-moz-progress-bar { background: var(--accent); }
+
   .flow-canvas {
     position: fixed;
     inset: 0;
@@ -117,16 +81,15 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     width: 100%;
     height: 100%;
     pointer-events: none;
-    mix-blend-mode: normal;
   }
 
   .landing {
     position: relative;
     z-index: 2;
-    background: transparent;
     display: flex;
     height: 100vh;
-    padding-top: 56px;
+    height: 100dvh;
+    padding-top: var(--nav-h);
     pointer-events: none;
   }
 
@@ -139,140 +102,94 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     order: 1;
   }
 
-  .flow-key {
-    position: fixed;
-    z-index: 12;
-    left: 28px;
-    bottom: 66px;
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    color: var(--text-muted);
-    font-size: 10px;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    pointer-events: none;
-  }
-  .flow-key i { width: 7px; height: 7px; border-radius: 50%; }
-  .pressure-low { background: #7196a9; }
-  .pressure-high { background: #c78b67; }
-
   .landing-bio {
-    flex: 0 0 52%;
+    flex: 0 0 50%;
     display: flex;
     position: relative;
     z-index: 3;
     align-items: center;
-    justify-content: center;
-    padding: 40px 0 40px 24px;
-    pointer-events: auto;
+    justify-content: flex-end;
+    padding: 32px 0 32px 48px;
     order: 0;
   }
 
-  .bio-card {
-    width: 100%;
-    max-width: 550px;
+  /* Everything inside scales with the circle, so the text always fits it. */
+  .bio {
+    container: bio / inline-size;
+    display: grid;
+    place-items: center;
+    width: min(580px, 44vw, calc(100dvh - var(--nav-h) - 64px));
     aspect-ratio: 1;
-    padding: 70px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    text-align: center;
-    background: var(--bg-base);
-    border: 0;
     border-radius: 50%;
+    background: var(--bg-base);
+    text-align: center;
+    pointer-events: auto;
   }
-  .bio-text-mobile { display: none; }
-  @media (max-width: 900px) {
-    .landing-viewer { order: 1; flex: 0 0 50vh; width: 100%; }
-    .landing-bio { order: 0; flex: 0 0 auto; }
-    .landing-bio { padding: 16px; }
-    .flow-key { display: none; }
-    .landing { padding-bottom: 76px; }
-    .bio-card {
-      width: min(100%, 520px);
-      aspect-ratio: 1;
-      padding: 36px;
-      border-radius: 50%;
-    }
-  }
-  .bio-greeting {
-    font-size: 28px;
-    font-weight: 800;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-  }
+  .bio-inner { width: 72%; }
 
-  .hero-name {
-    color: rgba(255, 255, 255, 0.95);
-  }
-
-  .bio-text {
-    font-size: 14px;
-    line-height: 1.7;
-    color: var(--text-secondary);
-  }
-
-  .bio-contact-label {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-top: 4px;
-  }
-
-  .bio-contacts {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    align-items: center;
-  }
-
-  .contact-icon {
-    color: var(--text-secondary);
-    transition: color 0.2s, transform 0.2s;
-  }
-  .contact-icon:hover {
-    color: var(--accent-cyan);
-    transform: translateY(-2px);
-  }
-
-  .bio-projects-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 8px;
-    padding: 6px 0;
-    background: transparent;
-    border: 0;
-    border-bottom: 1px solid var(--border-accent);
-    border-radius: 0;
-    font-size: 14px;
-    font-weight: 600;
+  .bio-name {
+    font-size: clamp(18px, 4.4cqi, 26px);
+    letter-spacing: -0.015em;
+    font-weight: 500;
+    line-height: 1.25;
     color: var(--text-primary);
-    align-self: center;
-    cursor: pointer;
-    font-family: inherit;
-    transition: color 0.2s;
+    margin-bottom: 3.6cqi;
   }
-  .bio-projects-link:hover {
-    color: var(--accent-cyan);
+
+  .bio-text p {
+    font-size: clamp(12.5px, 2.6cqi, 15.5px);
+    line-height: 1.65;
+    color: var(--text-secondary);
+    text-wrap: pretty;
   }
-  @media (max-width: 600px) {
-    .landing-bio { padding: 10px; }
-    .bio-card {
-      width: min(78vw, 320px);
-      height: min(78vw, 320px);
-      padding: 18px;
-      gap: 6px;
-      flex: 0 0 auto;
-    }
-    .bio-greeting { font-size: clamp(17px, 5vw, 21px); line-height: 1.12; }
-    .hero-name { display: block; }
-    .bio-text-desktop, .bio-contact-label { display: none; }
-    .bio-text-mobile { display: block; font-size: clamp(10px, 2.7vw, 11px); line-height: 1.37; }
-    .bio-contacts { gap: 12px; }
-    .bio-contacts svg { width: 18px; height: 18px; }
-    .bio-projects-link { font-size: 11px; margin-top: 0; padding: 3px 0; }
+
+  /* Hover previews for the personal lines. */
+  .peek { position: relative; }
+  .peek-card {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 12px);
+    z-index: 5;
+    width: 220px;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .45);
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, 6px);
+    transition: opacity .18s ease, transform .18s ease, visibility .18s;
+    pointer-events: none;
+  }
+  .peek-card img { display: block; width: 100%; height: auto; }
+  .peek:hover .peek-card, .peek:focus-visible .peek-card {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+  }
+  @media (hover: none) { .peek-card { display: none; } }
+
+  .bio-text p + p { margin-top: 2.4cqi; }
+  .nowrap { white-space: nowrap; }
+
+  .bio-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4cqi;
+    margin-top: 4.5cqi;
+    font-size: clamp(12px, 2.3cqi, 14px);
+  }
+
+  /* A small circle keeps only the core sentences. */
+  @container bio (max-width: 500px) {
+    .wide-only { display: none; }
+    .bio-inner { width: 76%; }
+  }
+
+  @media (max-width: 900px) {
+    .landing { flex-direction: column; height: auto; min-height: 100vh; }
+    .landing-viewer { order: 1; flex: 0 0 52vh; width: 100%; }
+    .landing-bio { order: 0; flex: 0 0 auto; justify-content: center; padding: 16px 16px 0; }
+    .bio { width: min(calc(100vw - 32px), 520px); }
   }
 </style>

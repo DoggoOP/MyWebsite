@@ -4,288 +4,109 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
 const allProjects = await getCollection('projects', ({ id }) => !id.startsWith('_'));
 const projects = allProjects.sort((a, b) => a.data.order - b.data.order);
+const yearOf = (date?: string) => date ? new Date(`${date}T00:00:00`).getFullYear() : null;
 ---
 
-<BaseLayout title="Projects — Ethan Kong">
-  <div class="topo-bg" />
-  <div class="projects-page">
-    <!-- Left sidebar: project list -->
-    <nav class="project-list" aria-label="Projects">
-      <h2 class="list-heading">Projects</h2>
-      {projects.map((p, i) => (
-        <button
-          class="project-item"
-          data-slug={p.slug}
-          data-index={i}
-          aria-expanded="false"
-        >
-          <span class="item-order">{String(p.data.order).padStart(2, '0')}</span>
-          <span class="item-title">{p.data.title}</span>
-          <svg class="item-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </button>
-      ))}
-    </nav>
+<BaseLayout title="Projects · Ethan Kong">
+  <main class="page">
+    <h1 class="display page-title">Projects</h1>
+    <p class="page-lede">Things I've built, at Stanford and before.</p>
 
-    <!-- Right panel: project preview -->
-    <div class="project-preview" id="preview-panel">
-      <div class="preview-default" id="preview-default">
-        <p class="preview-hint">Select a project to preview</p>
-      </div>
-
+    <ul class="grid">
       {projects.map(p => (
-        <div class="preview-card" id={`preview-${p.slug}`} hidden>
-          {p.data.coverImage
-            ? <img class="preview-anim preview-image" src={p.data.coverImage} alt={p.data.animation === 'ar-go-kart' ? 'Augmented reality go-kart system schematic' : `${p.data.title} project rendering`} />
-            : <canvas class="preview-anim" data-animation={p.data.animation}></canvas>}
-          <div class="preview-content">
-            <div class="preview-tags">
-              {p.data.tags.slice(0, 4).map(tag => (
-                <span class="tag">{tag}</span>
-              ))}
+        <li>
+          <a href={`/projects/${p.slug}`} class="card">
+            <div class:list={['thumb', p.data.coverStyle && `thumb-${p.data.coverStyle}`]}>
+              {p.data.coverImage
+                ? <img src={p.data.coverImage} alt="" loading="lazy" decoding="async" />
+                : <canvas data-animation={p.data.animation} aria-hidden="true"></canvas>}
             </div>
-            <h2 class="preview-title">{p.data.title}</h2>
-            <p class="preview-desc">{p.data.description}</p>
-            <a href={`/projects/${p.slug}`} class="preview-cta">
-              View Project
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </a>
-          </div>
-        </div>
+            <div class="meta">
+              <h2 class="title">{p.data.title}</h2>
+              {yearOf(p.data.date) && <span class="year">{yearOf(p.data.date)}</span>}
+            </div>
+            <p class="tagline">{p.data.tagline}</p>
+          </a>
+        </li>
       ))}
-    </div>
-  </div>
+    </ul>
+  </main>
 </BaseLayout>
 
 <style>
-  .projects-page {
+  .grid {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 48px 28px;
+    margin-top: 56px;
+  }
+
+  .card { display: block; }
+
+  .thumb {
     position: relative;
-    z-index: 1;
-    display: flex;
-    height: 100vh;
-    padding-top: 56px;
-  }
-
-  .project-list {
-    flex: 0 0 300px;
-    border-right: 1px solid var(--border-subtle);
-    overflow-y: auto;
-    padding: 32px 0;
-    background: rgba(20,36,43,0.98);
-    backdrop-filter: var(--glass-blur);
-  }
-
-  .list-heading {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    padding: 0 24px 20px;
-  }
-
-
-  .project-item {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 24px;
-    background: none;
-    border: none;
-    border-left: 3px solid transparent;
-    text-align: left;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
-    color: var(--text-secondary);
-  }
-
-  .project-item:hover {
-    background: rgba(162,201,203,0.04);
-    color: var(--text-primary);
-  }
-
-  .project-item.active {
-    border-left-color: var(--accent-cyan);
-    background: rgba(162,201,203,0.06);
-    color: var(--text-primary);
-  }
-
-  .item-order {
-    font-size: 11px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-muted);
-    min-width: 24px;
-  }
-
-  .project-item.active .item-order { color: var(--accent-cyan); }
-
-  .item-title {
-    flex: 1;
-    font-size: 14px;
-    font-weight: 500;
-  }
-
-  .item-arrow {
-    opacity: 0;
-    transition: opacity 0.15s, transform 0.2s;
-  }
-  .project-item:hover .item-arrow,
-  .project-item.active .item-arrow { opacity: 1; }
-  .project-item.active .item-arrow { color: var(--accent-cyan); }
-
-  .project-preview {
-    flex: 1;
-    position: relative;
+    aspect-ratio: 4 / 3;
     overflow: hidden;
+    border-radius: var(--radius-card);
+    background: var(--bg-card);
   }
-
-  .preview-default {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .preview-hint {
-    font-size: 14px;
-    color: var(--text-muted);
-    letter-spacing: 0.05em;
-  }
-
-  .preview-card {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    animation: slideIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-  }
-  .preview-card[hidden] { display: none; }
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateX(24px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-
-  .preview-anim {
-    width: 100%;
-    height: 55%;
+  .thumb img, .thumb canvas {
     display: block;
-    background: #0d191f;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform .5s cubic-bezier(.2, .7, .2, 1);
   }
-  .preview-image { object-fit: contain; padding: 18px; }
+  .thumb-diagram { background: #fff; }
+  .thumb-render { background: #2e3440; }
+  .thumb-diagram img, .thumb-render img { object-fit: contain; padding: 18px; }
+  .card:hover .thumb img, .card:hover .thumb canvas { transform: scale(1.03); }
 
-  .preview-content {
-    flex: 1;
-    padding: 32px 48px;
-    background: var(--bg-base);
+  .meta {
     display: flex;
-    flex-direction: column;
+    align-items: baseline;
+    justify-content: space-between;
     gap: 12px;
-    justify-content: center;
+    margin-top: 16px;
   }
-
-  .preview-tags {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .tag {
-    font-size: 11px;
-    padding: 3px 9px;
-    border-radius: 2px;
-    background: rgba(162,201,203,0.08);
-    border: 1px solid rgba(162,201,203,0.2);
-    color: var(--accent-cyan);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .preview-title {
-    font-size: 36px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
+  .title {
+    font-size: 16px;
+    font-weight: 500;
     color: var(--text-primary);
   }
-
-  .preview-desc {
-    font-size: 15px;
+  .card:hover .title {
+    text-decoration: underline;
+    text-decoration-color: var(--border-accent);
+    text-underline-offset: 4px;
+  }
+  .year {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  .tagline {
+    margin-top: 4px;
     color: var(--text-secondary);
-    line-height: 1.6;
-    max-width: 520px;
+    font-size: 14px;
+    line-height: 1.5;
   }
 
-  .preview-cta {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 24px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-accent);
-    border-radius: var(--radius-btn);
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--accent-cyan);
-    align-self: flex-start;
-    transition: background 0.2s, transform 0.15s;
-    margin-top: 8px;
-  }
-  .preview-cta:hover {
-    background: var(--bg-surface);
-    transform: translateX(2px);
-  }
+  @media (max-width: 960px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; gap: 40px; margin-top: 40px; } }
 </style>
 
 <script>
   import { initHeroAnimation } from '../../scripts/heroAnimations.js';
 
-  const items = document.querySelectorAll<HTMLButtonElement>('.project-item');
-  let activeSlug: string | null = null;
-
-  items.forEach(item => {
-    item.addEventListener('click', () => {
-      const slug = item.dataset.slug!;
-      if (slug === activeSlug) return;
-
-      items.forEach(i => {
-        i.classList.remove('active');
-        i.setAttribute('aria-expanded', 'false');
-      });
-
-      const prevCard = activeSlug ? document.getElementById(`preview-${activeSlug}`) : null;
-      if (prevCard) prevCard.hidden = true;
-
-      item.classList.add('active');
-      item.setAttribute('aria-expanded', 'true');
-      activeSlug = slug;
-
-      const card = document.getElementById(`preview-${slug}`);
-      const defaultMsg = document.getElementById('preview-default');
-      if (defaultMsg) defaultMsg.style.display = 'none';
-
-      if (card) {
-        card.hidden = false;
-        // Init animation on canvas if not already started
-        // Use requestAnimationFrame so the card has layout before we read canvas dimensions
-        const canvas = card.querySelector<HTMLCanvasElement>('.preview-anim');
-        if (canvas && canvas.dataset.animation && !canvas.dataset.initialized) {
-          canvas.dataset.initialized = 'true';
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              initHeroAnimation(canvas.dataset.animation!, canvas);
-            });
-          });
-        }
-      }
+  let stops: Array<() => void> = [];
+  function init() {
+    stops.forEach(stop => stop());
+    stops = [];
+    document.querySelectorAll<HTMLCanvasElement>('.thumb canvas[data-animation]').forEach(canvas => {
+      stops.push(initHeroAnimation(canvas.dataset.animation!, canvas));
     });
-  });
-
-  // Auto-select first project on load
-  if (items.length > 0) items[0].click();
+  }
+  document.addEventListener('astro:page-load', init);
+  document.addEventListener('astro:before-preparation', () => { stops.forEach(stop => stop()); stops = []; });
 </script>

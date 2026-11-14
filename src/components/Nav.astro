@@ -1,27 +1,20 @@
 ---
-interface Props {
-  showBack?: boolean;
-  backHref?: string;
-}
-const { showBack = false, backHref = '/projects' } = Astro.props;
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
 ---
 
 <nav class="nav">
-  <a href="/" class="nav-logo" aria-label="Ethan Kong — home">
-    <canvas class="nav-flow" aria-hidden="true"></canvas>
-    <span class="nav-core" aria-hidden="true">EK</span>
+  <a href="/" class="nav-home" aria-label="Ethan Kong, home">
+    <span class="nav-logo">
+      <canvas class="nav-flow" aria-hidden="true"></canvas>
+      <span class="nav-core" aria-hidden="true">EK</span>
+    </span>
+    <span class="nav-name">Ethan Kong</span>
   </a>
   <div class="nav-links">
-    {showBack && (
-      <a href={backHref} class="nav-back">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M19 12H5M12 19l-7-7 7-7"/>
-        </svg>
-        Back
-      </a>
-    )}
-    <button data-open-projects class="nav-link nav-projects-btn">Projects</button>
-    <a href="/assets/resume.pdf" class="nav-link nav-resume" download="Ethan's resume.pdf">Resume</a>
+    <a href="/about" class:list={['nav-link', { active: isActive('/about') }]}>About</a>
+    <a href="/projects" class:list={['nav-link', { active: isActive('/projects') }]}>Projects</a>
+    <a href="/assets/resume.pdf" class="nav-link" target="_blank" rel="noopener">Resume</a>
   </div>
 </nav>
 
@@ -33,18 +26,20 @@ const { showBack = false, backHref = '/projects' } = Astro.props;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 56px;
-    padding: 6px 32px;
-    background: rgba(18,25,27,0.96);
+    height: var(--nav-h);
+    padding: 0 28px 0 12px;
+    background: rgba(15, 19, 20, 0.92);
     border-bottom: 1px solid var(--border-subtle);
-    backdrop-filter: var(--glass-blur);
   }
 
-  .nav-logo {
-    position: relative;
+  .nav-home {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    gap: 2px;
+  }
+  .nav-logo {
+    position: relative;
+    display: inline-block;
     width: 88px;
     height: 48px;
     flex: 0 0 88px;
@@ -63,52 +58,40 @@ const { showBack = false, backHref = '/projects' } = Astro.props;
     border-radius: 50%;
     background: var(--bg-base);
     color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -.03em;
+  }
+  .nav-name {
+    margin-left: -28px;
     font-size: 15px;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -.05em;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
   }
 
   .nav-links {
     display: flex;
     align-items: center;
-    gap: 24px;
+    gap: 28px;
   }
-
   .nav-link {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text-secondary);
     transition: color 0.2s;
   }
-  .nav-link:hover { color: var(--text-primary); }
-
-  .nav-projects-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-family: inherit;
+  .nav-link:hover, .nav-link.active { color: var(--text-primary); }
+  .nav-link.active {
+    text-decoration: underline;
+    text-decoration-color: var(--border-accent);
+    text-underline-offset: 6px;
   }
 
-  .nav-resume {
-    padding: 6px 16px;
-    border: 1px solid var(--border-accent);
-    border-radius: var(--radius-btn);
-    color: var(--accent-cyan);
-    font-size: 13px;
-    transition: background 0.2s;
+  @media (max-width: 600px) {
+    .nav { padding: 0 18px 0 4px; }
+    .nav-name { display: none; }
+    .nav-links { gap: 20px; }
   }
-  .nav-resume:hover { background: rgba(157,185,180,0.08); }
-
-  .nav-back {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--text-secondary);
-    transition: color 0.2s;
-  }
-  .nav-back:hover { color: var(--accent-cyan); }
-  @media (max-width: 600px) { .nav { padding: 6px 16px; } }
 </style>
 
 <script>

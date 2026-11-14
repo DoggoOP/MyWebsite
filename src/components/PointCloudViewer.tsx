@@ -94,6 +94,7 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
   const [sceneMode, setSceneMode] = useState<'particles' | 'flow'>('flow');
   const sceneModeRef = useRef<'particles' | 'flow'>('flow');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [dockOpen, setDockOpen] = useState(false);
   const [particleCount, setParticleCount] = useState(1300);
   const [particleRadius, setParticleRadius] = useState(58);
   const [particleStrength, setParticleStrength] = useState(1);
@@ -558,25 +559,49 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
             </div>)}
           </div>
         </aside>}
-        <div ref={uiRef} className="pcv-controls" style={{ display: 'none' }}>
-          <div className="pcv-scene-switch" role="group" aria-label="Simulation">
-            <button className={`pcv-btn ${sceneMode === 'particles' ? 'is-active' : ''}`} aria-pressed={sceneMode === 'particles'} onClick={() => handleSceneMode('particles')}>Particles</button>
-            <button className={`pcv-btn ${sceneMode === 'flow' ? 'is-active' : ''}`} aria-pressed={sceneMode === 'flow'} onClick={() => handleSceneMode('flow')}>Flow</button>
-          </div>
-          {sceneMode === 'particles'
-            ? <button className={`pcv-btn ${settingsOpen ? 'is-active' : ''}`} aria-expanded={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}>Settings</button>
-            : <>
-                <label className="pcv-flow-speed">Air speed
-                  <input type="range" min="0.4" max="2" step="0.05" defaultValue={flowSpeedRef.current} onChange={handleFlowSpeed} aria-label="Airflow speed" />
-                  <output ref={speedReadoutRef}>{flowSpeedRef.current.toFixed(2)}×</output>
-                </label>
-                <button onClick={handleFlowDirection} ref={directionBtnRef} className="pcv-btn" aria-label="Reverse airflow direction">{flowDirectionLabel(flowControlRef.current?.isVertical() ?? false, flowDirectionRef.current)}</button>
-                <div className="pcv-flow-modes" role="group" aria-label="Flow visualization">
-                  {(['pressure', 'vorticity', 'speed'] as FlowMode[]).map(mode =>
-                    <button key={mode} className={`pcv-btn ${flowMode === mode ? 'is-active' : ''}`} aria-pressed={flowMode === mode} onClick={() => handleFlowMode(mode)}>{mode === 'pressure' ? 'Pressure' : mode === 'vorticity' ? 'Vorticity' : 'Speed'}</button>
-                  )}
+        <div ref={uiRef} className="pcv-dock" style={{ display: 'none' }}>
+          {dockOpen && <div className="pcv-panel" id="pcv-panel" role="group" aria-label="Wind tunnel controls">
+            <div className="pcv-row">
+              <span className="pcv-row-label">Sim</span>
+              <div className="pcv-seg">
+                <button className={`pcv-btn ${sceneMode === 'flow' ? 'is-active' : ''}`} aria-pressed={sceneMode === 'flow'} onClick={() => handleSceneMode('flow')}>Flow</button>
+                <button className={`pcv-btn ${sceneMode === 'particles' ? 'is-active' : ''}`} aria-pressed={sceneMode === 'particles'} onClick={() => handleSceneMode('particles')}>Particles</button>
+              </div>
+            </div>
+            {sceneMode === 'particles'
+              ? <div className="pcv-row">
+                  <span className="pcv-row-label">Rules</span>
+                  <button className={`pcv-btn ${settingsOpen ? 'is-active' : ''}`} aria-expanded={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}>{settingsOpen ? 'Hide settings' : 'Settings'}</button>
                 </div>
-              </>}
+              : <>
+                  <div className="pcv-row">
+                    <span className="pcv-row-label">Show</span>
+                    <div className="pcv-seg">
+                      {(['vorticity', 'pressure', 'speed'] as FlowMode[]).map(mode =>
+                        <button key={mode} className={`pcv-btn ${flowMode === mode ? 'is-active' : ''}`} aria-pressed={flowMode === mode} onClick={() => handleFlowMode(mode)}>{mode === 'pressure' ? 'Pressure' : mode === 'vorticity' ? 'Vorticity' : 'Speed'}</button>
+                      )}
+                    </div>
+                  </div>
+                  <label className="pcv-row pcv-flow-speed">
+                    <span className="pcv-row-label">Wind</span>
+                    <input type="range" min="0.4" max="2" step="0.05" defaultValue={flowSpeedRef.current} onChange={handleFlowSpeed} aria-label="Airflow speed" />
+                    <output ref={speedReadoutRef}>{flowSpeedRef.current.toFixed(2)}×</output>
+                  </label>
+                  <div className="pcv-row">
+                    <span className="pcv-row-label">Direction</span>
+                    <button onClick={handleFlowDirection} ref={directionBtnRef} className="pcv-btn" aria-label="Reverse airflow direction">{flowDirectionLabel(flowControlRef.current?.isVertical() ?? false, flowDirectionRef.current)}</button>
+                  </div>
+                </>}
+          </div>}
+          <button className="pcv-toggle" aria-expanded={dockOpen} aria-controls="pcv-panel" onClick={() => { setDockOpen(!dockOpen); if (dockOpen) setSettingsOpen(false); }}>
+            <span className="pcv-toggle-title">Wind tunnel</span>
+            <span id="flow-key" className="pcv-key" aria-hidden="true">
+              <span id="flow-key-mode">Vorticity</span>
+              <i className="pcv-key-low" /><span id="flow-key-low">−</span>
+              <i className="pcv-key-high" /><span id="flow-key-high">+</span>
+            </span>
+            <span className="pcv-toggle-caret" aria-hidden="true">{dockOpen ? '×' : '+'}</span>
+          </button>
         </div>
       </>}
     </div>

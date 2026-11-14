@@ -17,7 +17,7 @@ import SailVideo from '../../components/SailVideo.astro';
 
 I built **AutoCFD**, a pipeline that accepts a vehicle CAD file, sets up a Luminary Cloud simulation, monitors the run, and extracts drag, side force, lift, center of pressure, and convergence information. The application also logs results to Google Sheets so geometry and wind cases can be compared. The code includes farfield and mesh setup, optional rotating-wheel treatment, and a job dashboard. These are implemented workflow features, not claims that every simulation has been validated experimentally.
 
-The same workflow can run **Shellpower**, a solar-array layout and simulation tool, on an exported car-body mesh. It places cells under a 6.0 m² target-area constraint, evaluates exposure and occlusion across sampled headings and race hours, and estimates peak power and daily energy. The current code supports a symmetric layout and an optional shadow-aware comparison run. I worked on bringing aerodynamic and solar estimates into one run because a sail can affect both drag and array shading.
+The same workflow can run **Shellpower**, a solar-array layout and simulation tool, on an exported car-body mesh. Shellpower places cells under a 6.0 m² target-area constraint, evaluates exposure and occlusion across sampled headings and race hours, and estimates peak power and daily energy. The current code supports a symmetric layout and an optional shadow-aware comparison run. I worked on bringing aerodynamic and solar estimates into one run because a sail can affect both drag and array shading.
 
 [AutoCFD source](https://github.com/DoggoOP/SolarCarLuminaryAutoCFD)
 
@@ -36,7 +36,7 @@ This study tests a retractable, auto-cambering sail for crosswind energy harvest
     <span class="study-slide-number">02 / WORKING WIND CASE</span>
     <h3>Small apparent-wind angle</h3>
     <div class="study-slide-metrics"><div><strong>26.79</strong><span>m/s relative wind</span></div><div><strong>4.54°</strong><span>apparent angle</span></div></div>
-    <p>The route scenario assumes a 3 m/s southeast wind for the first 40% to Alice Springs. It is an analysis input, not a verified forecast.</p>
+    <p>The route scenario assumes a 3 m/s southeast wind for the first 40% to Alice Springs. The wind is an analysis input, not a verified forecast.</p>
   </section>
   <section class="study-slide">
     <span class="study-slide-number">03 / PRELIMINARY FORCE RESULT</span>
@@ -60,14 +60,14 @@ This study tests a retractable, auto-cambering sail for crosswind energy harvest
 
 <figure class="project-figure">
   <SailVideo />
-  <figcaption>Physical sail prototype changing camber. The motion demonstrates the mechanism; it does not establish the optimal trim or lift-to-drag ratio.</figcaption>
+  <figcaption>Physical sail prototype changing camber. The motion demonstrates the mechanism and does not establish the optimal trim or lift-to-drag ratio.</figcaption>
 </figure>
 
 The second rendering above the page shows the sail installed in the rear bodywork. The concept uses a paired skin around a mast with a retraction and trim mechanism. The CAD images show packaging intent; they do not establish structural adequacy or a tested actuation cycle.
 
 ## CFD and force comparison
 
-The Luminary visualization below shows surface results and flow paths for one car geometry. Its color scales represent skin-friction coefficient and turbulence intermittency. It should not be read as a validated prediction of race energy savings on its own.
+The Luminary visualization below shows surface results and flow paths for one car geometry. The color scales represent skin-friction coefficient and turbulence intermittency. Read alone, the visualization is not a validated prediction of race energy savings.
 
 <figure class="project-figure">
   <img src="/assets/solar-car-luminary-cfd.png" alt="Luminary Cloud CFD rendering of a solar car with surface-color contours and flow paths" />
@@ -88,7 +88,7 @@ A separate set of notes lists different drag and side-force values for similarly
 
 ## Working assumptions and decision checks
 
-One working route scenario assumes a 3 m/s southeast wind during the first 40% of the race to Alice Springs. The noted relative-wind vector is (-26.71, -2.12, 0) m/s, giving a magnitude of about 26.79 m/s and an angle of about 4.54°. This is a scenario for analysis, not a verified race forecast. The current energy estimate of **0.88 kWh/day gained** and **0.20 kWh/day lost** to shading and drag is also preliminary; its underlying wind frequency, electrical conversion, and deployment assumptions need a documented calculation.
+One working route scenario assumes a 3 m/s southeast wind during the first 40% of the race to Alice Springs. The noted relative-wind vector is (-26.71, -2.12, 0) m/s, giving a magnitude of about 26.79 m/s and an angle of about 4.54°. This is a scenario for analysis, not a verified race forecast. The current energy estimate of **0.88 kWh/day gained** and **0.20 kWh/day lost** to shading and drag is also preliminary; the underlying wind frequency, electrical conversion, and deployment assumptions need a documented calculation.
 
 The sail also changes side force, tire load, and roll moment. The notes include a 260 kg vehicle mass, a 550 N maximum side-force case, and a reported center of pressure for one AC75 case at (-0.9, 0.41, 0.31) m relative to the center of the front wheels at ground level. Those inputs need a common coordinate frame and a tire-load model before a rollover or steering conclusion. The initial actuator estimate is 16.25 N·m of boom torque under a 130 N side load; gearing and holding-power claims still require a mechanical test.
 

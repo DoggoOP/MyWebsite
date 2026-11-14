@@ -12,9 +12,9 @@ links:
 
 ## Overview
 
-This bot autonomously trades Polymarket prediction markets, focusing on time-bounded markets with measurable underlying signals. It runs end-to-end on a Railway deployment: data collection, forecasting, edge calculation, order execution, and a live Next.js dashboard. The public dashboard shows performance and bot health; positions and recommendations are private.
+This bot autonomously trades Polymarket prediction markets, focusing on time-bounded markets with measurable underlying signals. The bot runs end-to-end on a Railway deployment: data collection, forecasting, edge calculation, order execution, and a live Next.js dashboard. The public dashboard shows performance and bot health; positions and recommendations are private.
 
-More than anything, this project has been a long lesson in how easy it is to build something that *looks* profitable in a backtest but is actually doing something completely different than what I think it's doing. Most of the work hasn't been in the prediction model — it's been in catching the bot doing the wrong thing and then writing a constraint that prevents it from doing it again. The architecture below is what survived that process.
+More than anything, this project has been a long lesson in how easily a bot can *look* profitable in a backtest while doing something completely different from what I think. Most of the work has gone into catching the bot doing the wrong thing, then writing a constraint so the same mistake can't happen again. The architecture below is what survived that process.
 
 The system is built around four loosely coupled stages, each independently testable and replaceable:
 
@@ -25,7 +25,7 @@ The system is built around four loosely coupled stages, each independently testa
 
 ## Live Dashboard
 
-The public performance dashboard appears beside the project summary above. It shows bot health, equity, profit and loss, and daily trade summaries.
+The public performance dashboard at the top of this page shows bot health, equity, profit and loss, and daily trade summaries.
 
 [polymarketdashboard-production.up.railway.app](https://polymarketdashboard-production.up.railway.app/)
 
@@ -33,7 +33,7 @@ The public performance dashboard appears beside the project summary above. It sh
 
 The ingestion layer pulls from multiple sources with fallback chains to handle API outages and rate limits. Raw observations are normalized against a time-of-day-aware baseline so the model always operates on comparable, regime-adjusted quantities across different markets and time windows.
 
-A scheduler polls every 30 seconds and persists everything to SQLite in WAL mode so the dashboard can read concurrently without blocking the trading loop. New markets are auto-discovered hourly through the Polymarket API, with each market's measurement window parsed from its title — important because the trading window and the resolution window are not always the same interval.
+A scheduler polls every 30 seconds and persists everything to SQLite in WAL mode so the dashboard can read concurrently without blocking the trading loop. New markets are auto-discovered hourly through the Polymarket API, with each market's measurement window parsed from the market title. That matters because the trading window and the resolution window are not always the same interval.
 
 ## Forecasting
 
@@ -47,33 +47,33 @@ The trading engine compares the model's bracket probabilities against live order
 
 $$\text{edge} = p_{\text{model}} - p_{\text{market}} - \tfrac{1}{2}\,\text{spread}$$
 
-Brackets with positive edge are bought, sized by a fractional Kelly rule with a per-bracket hard cap so no single position can dominate the portfolio. The engine exits when the model changes its mind, with trend-aware filters to avoid cutting winners on temporary price moves and a phase-dependent threshold that lets borderline positions ride to resolution rather than churning on noise near bracket boundaries.
+Brackets with positive edge are bought, sized by a fractional Kelly rule with a per-bracket hard cap so no single position can dominate the portfolio. The engine exits when the model's forecast flips, with trend-aware filters to avoid cutting winners on temporary price moves and a phase-dependent threshold that lets borderline positions ride to resolution rather than churning on noise near bracket boundaries.
 
 Orders route through the Polymarket CLOB API. A paper-trading ledger mirrors the live execution path so strategy changes can be tested end-to-end before any real capital is committed — the only difference between paper and live mode is which broker the engine talks to.
 
 ## Things I Got Wrong
 
-Almost every constraint in this codebase exists because the bot did something stupid and lost money first. The interesting part of building this was watching it find loopholes I didn't know existed.
+Almost every constraint in this codebase exists because the bot did something stupid and lost money first. The interesting part of building this was watching the bot find loopholes I didn't know existed.
 
 ### The backtester wanted to market-make
 
-The first version of the optimizer kept finding strategies that looked phenomenal in-sample. When I dug into the trade logs, the "strategy" it had converged on was effectively market-making: bidding both sides of every bracket and collecting the spread, with the directional model along for the ride.
+The first version of the optimizer kept finding strategies that looked phenomenal in-sample. When I dug into the trade logs, the "strategy" the optimizer had converged on was effectively market-making: bidding both sides of every bracket and collecting the spread, with the directional model along for the ride.
 
-That's a real strategy, but it's not the one I'm trying to build, and it's *very* fragile to the simulator's spread assumptions — small changes to the spread model would flip it from profitable to ruinous overnight. I added constraints to prevent the optimizer from exploring that region: minimum edge thresholds with hard floors, no offsetting positions on the same market, and a fitness penalty for trip count above a per-market ceiling. Once those were in, the optimizer had to actually find directional edge or score badly.
+Market-making is a real strategy, but not the one I'm trying to build, and *very* fragile to the simulator's spread assumptions: small changes to the spread model would flip the results from profitable to ruinous overnight. I added constraints to prevent the optimizer from exploring that region: minimum edge thresholds with hard floors, no offsetting positions on the same market, and a fitness penalty for trip count above a per-market ceiling. Once those were in, the optimizer had to actually find directional edge or score badly.
 
 ### I thought I had a speed advantage
 
-For a stretch I was convinced the bot had an execution-speed edge — that polling faster and racing to fill ahead of the market consensus was real alpha. I cut the loop interval, tightened the order cycle, and ran it live. It lost money consistently.
+For a stretch I was convinced the bot had an execution-speed edge — that polling faster and racing to fill ahead of the market consensus was real alpha. I cut the loop interval, tightened the order cycle, and ran the faster loop live. The bot lost money consistently.
 
 Polymarket is not HFT. The order book is thin, fills are slow, and any "speed advantage" I had was just me paying the spread to get into positions slightly before they were correctly priced — which the rest of the market then immediately fixed for free. Speed didn't help because there was no speed-sensitive edge to capture; the edge was in being *right*, not in being *first*. I rolled back the polling cadence and the cycle aggressiveness, and the P&L recovered.
 
 ### The bot was gambling
 
-The worst stretch was watching the dashboard show the bot opening positions on brackets where, by my own model, the edge was effectively zero. The minimum-edge threshold had been a tunable parameter, and at some point the optimizer had quietly driven it to zero on the in-sample data — because in the simulator, with perfectly modeled spreads and no real adverse selection, a tiny edge multiplied by Kelly sizing was still net-positive on average.
+The worst stretch was watching the dashboard show the bot opening positions on brackets where, by my own model, the edge was effectively zero. The minimum-edge threshold had been a tunable parameter, and at some point the optimizer had quietly driven the threshold to zero on the in-sample data, because in the simulator, with perfectly modeled spreads and no real adverse selection, a tiny edge multiplied by Kelly sizing was still net-positive on average.
 
-Live, of course, that's gambling. Any noise in the model — and there's plenty — will get you randomly long every bracket on every market, churning capital and bleeding through spread and slippage. I locked the floor: minimum edge can no longer optimize below a hard threshold, the abandonment criterion got tightened so borderline positions get cut early instead of riding noise, and the per-bracket cap got more aggressive so even if a stupid position slips through, it can't grow into a real loss.
+Live, of course, that's gambling. Any noise in the model — and there's plenty — will get you randomly long every bracket on every market, churning capital and bleeding through spread and slippage. I locked the floor: minimum edge can no longer optimize below a hard threshold, the abandonment criterion got tightened so borderline positions get cut early instead of riding noise, and the per-bracket cap got more aggressive so a stupid position that slips through can't grow into a real loss.
 
-The pattern across all three of these is the same: the optimizer is a relentless minimizer of fitness, and if your fitness function has *any* loophole, it will find it before you do. Most of the constraints in this system aren't there to make money — they're there to stop the bot from making money in ways I don't trust.
+The pattern across all three of these is the same: the optimizer is a relentless minimizer of fitness, and if your fitness function has *any* loophole, the optimizer will find the loophole before you do. Most of the constraints in this system aren't there to make money — they're there to stop the bot from making money in ways I don't trust.
 
 ## Backtester & Optimizer
 

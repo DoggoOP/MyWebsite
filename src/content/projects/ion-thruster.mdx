@@ -1,8 +1,9 @@
 ---
 title: Ion Thruster Optimization
-description: Simulation models for gridded-ion and Hall-effect thrusters validated against empirical datasets, deriving an analytic model that improves thrust-to-power scaling — published in the Journal of High School Science.
+description: Simulation models for gridded-ion and Hall-effect thrusters validated against empirical datasets, deriving an analytic model that improves thrust-to-power scaling. Published in the Journal of High School Science.
 tagline: Thruster simulation & peer-reviewed publication
-coverImage: /assets/griddedThruster.png
+coverImage: /assets/halltrajplot.png
+coverStyle: diagram
 animation: ion-thruster
 date: "2024-09-01"
 tags: [research, plasma, simulation, mathematica, aerospace, publication]
@@ -11,10 +12,6 @@ links:
   paper: https://jhss.scholasticahq.com/article/123435-optimization-of-the-thrust-to-power-consumption-ratio-of-ion-thrusters-through-simulations
   github: https://github.com/DoggoOP/IonThrustersOptimizations
 ---
-
-<div style="margin: 24px 0; border-radius: 8px; overflow: hidden;">
-  <img src="/assets/halltrajplot.png" style="width: 100%; display: block;" />
-</div>
 
 ## Overview
 The thrust-to-power-consumption ratio in electric propulsion systems is one of the most important parameters for creating efficient and reliable propulsion systems for long-duration space missions and interplanetary exploration. This study aims to develop and analyze simulation frameworks for Gridded Ion thrusters and Hall Effect thrusters to enhance the understanding and performance of these propulsion systems. In my research, I defined physical parameters for both propulsion systems, creating implicit 3D geometric regions, numerical solutions to Poisson’s equation for electrostatic potentials, Biot–Savart-derived magnetic field calculations, and differential equation solvers for charged particle motion. After developing the simulation, I ran extensive parameter sweeps and sensitivity analyses to identify the optimal operating conditions for maximizing the thrust to power consumption ratio. The simulation results were compared with empirical data from the University of Michigan's Plasmadynamics and Electric Propulsion Laboratory (PEPL) to give a basis in reality. Based on the optimized parameters for the Gridded Ion thruster and the Hall Effect thruster, I saw notable improvements in performance of up to 50% increase, indicating the potential for more efficient space propulsion systems. This study's findings contribute to the development of more efficient and reliable configurations, setting a foundation for future advancements in space propulsion technology. Further research could involve refining the simulations by incorporating plasma friction and ionization processes for greater accuracy.
