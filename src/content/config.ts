@@ -9,6 +9,8 @@ const projects = defineCollection({
     coverImage: z.string().optional(),
     /** 'diagram' sits on white, 'render' on the CAD backdrop; neither is cropped. */
     coverStyle: z.enum(['photo', 'diagram', 'render']).optional(),
+    /** CSS object-position for the cropped project-card thumbnail, e.g. '50% 10%'. */
+    coverPosition: z.string().optional(),
     animation: z.enum([
       'lattice', 'ion-thruster', 'sailing-rl', 'solar-car',
       '3d-plane', 'light-switch', 'rocketry', 'polymarket', 'lightsaber',

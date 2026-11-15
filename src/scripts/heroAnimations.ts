@@ -23,7 +23,7 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
     '3d-plane': animatePlane,
     'light-switch': animateCircuit,
     'rocketry': animateRocket,
-    'polymarket': animateCandlestick,
+    'polymarket': animateDistributions,
   };
 
   const animator = animators[type];
@@ -308,56 +308,135 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
     draw();
   }
 
-  function animateCandlestick() {
-    const candles: { open: number; close: number; high: number; low: number }[] = [];
-    const maxCandles = Math.floor(W() / 22);
-    let price = 0.5;
-    const addCandle = () => {
-      const open = price;
-      const change = (Math.random() - 0.48) * 0.08;
-      price = Math.max(0.05, Math.min(0.95, price + change));
-      const close = price;
-      const high = Math.max(open, close) + Math.random() * 0.03;
-      const low = Math.min(open, close) - Math.random() * 0.03;
-      candles.push({ open, close, high, low });
-      if (candles.length > maxCandles) candles.shift();
-    };
-    for (let i = 0; i < maxCandles; i++) addCandle();
-    let frame = 0;
+  // A real snapshot from the bot, 84 h before the "Elon Musk # tweets
+  // Oct 30 - Nov 6, 2026" market closed. Market: bracket mid prices,
+  // normalised, plus the normal with their mean and sd. Model: the bot's
+  // normal (truncated at 174 tweets so far, far below the plotted range).
+  // The market resolved at 315. Colours follow the bot's Railway dashboard.
+  function animateDistributions() {
+    const MODEL = { mu: 345.6, sd: 32.1 };
+    const MARKET = { mu: 352.4, sd: 56.9 };
+    const RESULT = 315;
+    const PRICE_SUM = 0.934;
+    // [bracket lower bound, mid price]; 440-459 had no quote, so no bar.
+    const BRACKETS: [number, number][] = [
+      [180, 0.001], [200, 0.0154], [220, 0.0175], [240, 0.018], [260, 0.03],
+      [280, 0.0695], [300, 0.105], [320, 0.115], [340, 0.135], [360, 0.125],
+      [380, 0.122], [400, 0.0992], [420, 0.0488], [460, 0.019], [500, 0.008],
+      [520, 0.004],
+    ];
+    const X0 = 200, X1 = 500;
+    const pdf = (x: number, mu: number, sd: number) =>
+      Math.exp(-0.5 * ((x - mu) / sd) ** 2) / (sd * Math.sqrt(2 * Math.PI));
+    const ease = (k: number) => 1 - (1 - k) ** 3;
+    const start = performance.now();
+    let done = false, lastW = 0, lastH = 0;
+
     const draw = () => {
-      frame++;
-      if (frame % 45 === 0) addCandle();
-      ctx.fillStyle = 'rgba(13,25,31,0.25)';
-      ctx.fillRect(0, 0, W(), H());
-      ctx.strokeStyle = 'rgba(130,190,192,0.06)';
+      const w = W(), h = H();
+      const k = ease(Math.min(1, (performance.now() - start) / 900));
+      if (done && w === lastW && h === lastH) { _rafId = requestAnimationFrame(draw); return; }
+      done = k === 1; lastW = w; lastH = h;
+
+      ctx.fillStyle = '#0b1120';
+      ctx.fillRect(0, 0, w, h);
+
+      const padX = w * 0.07, top = h * 0.24, base = h * 0.8;
+      const plotW = w - padX * 2;
+      const px = (x: number) => padX + ((x - X0) / (X1 - X0)) * plotW;
+      const peak = pdf(0, 0, MODEL.sd);
+      const py = (d: number) => base - (d / peak) * (base - top) * 0.95 * k;
+      const fs = Math.max(10, Math.min(13, w / 32));
+
+      ctx.strokeStyle = '#1f2937';
       ctx.lineWidth = 1;
-      for (let i = 1; i < 5; i++) {
-        const y = H() * 0.1 + (H() * 0.8 / 5) * i;
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W(), y); ctx.stroke();
+      ctx.setLineDash([3, 3]);
+      for (let i = 1; i < 4; i++) {
+        const y = top + ((base - top) / 4) * i;
+        ctx.beginPath(); ctx.moveTo(padX, y); ctx.lineTo(w - padX, y); ctx.stroke();
       }
-      const cw = W() / maxCandles;
-      const toY = (v: number) => H() * 0.1 + (1 - v) * H() * 0.8;
-      for (let i = 0; i < candles.length; i++) {
-        const c = candles[i];
-        const x = i * cw + cw / 2;
-        const isUp = c.close >= c.open;
-        const color = isUp ? 'rgba(153,190,169,0.8)' : 'rgba(200,151,130,0.8)';
-        ctx.strokeStyle = color; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(x, toY(c.high)); ctx.lineTo(x, toY(c.low)); ctx.stroke();
-        ctx.fillStyle = color;
-        const top = toY(Math.max(c.open, c.close));
-        const bodyH = Math.max(2, Math.abs(toY(c.open) - toY(c.close)));
-        ctx.fillRect(x - cw * 0.3, top, cw * 0.6, bodyH);
+      for (let x = 250; x < X1; x += 50) {
+        ctx.beginPath(); ctx.moveTo(px(x), top); ctx.lineTo(px(x), base); ctx.stroke();
       }
-      ctx.strokeStyle = 'rgba(130,190,192,0.5)';
-      ctx.setLineDash([4, 4]);
-      ctx.lineWidth = 1;
-      const py = toY(price);
-      ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(W(), py); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(130,190,192,0.9)';
-      ctx.font = '12px monospace';
-      ctx.fillText(price.toFixed(3), W() - 55, py - 5);
+
+      // Market prices as bars (probability per tweet, same units as the curves).
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.16)';
+      for (const [lo, price] of BRACKETS) {
+        if (lo < X0 || lo >= X1) continue;
+        const y = py(price / PRICE_SUM / 20);
+        ctx.fillRect(px(lo) + 1, y, px(lo + 20) - px(lo) - 2, base - y);
+      }
+
+      const N = 200;
+      const xs = Array.from({ length: N + 1 }, (_, i) => X0 + ((X1 - X0) * i) / N);
+
+      // Edge: where the model puts more weight than the market does.
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.32)';
+      ctx.beginPath();
+      xs.forEach(x => ctx.lineTo(px(x), py(Math.max(pdf(x, MODEL.mu, MODEL.sd), pdf(x, MARKET.mu, MARKET.sd)))));
+      [...xs].reverse().forEach(x => ctx.lineTo(px(x), py(pdf(x, MARKET.mu, MARKET.sd))));
+      ctx.closePath();
+      ctx.fill();
+
+      const curve = (mu: number, sd: number) => {
+        ctx.beginPath();
+        xs.forEach((x, i) => {
+          const y = py(pdf(x, mu, sd));
+          if (i === 0) ctx.moveTo(px(x), y); else ctx.lineTo(px(x), y);
+        });
+      };
+      curve(MARKET.mu, MARKET.sd);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      curve(MODEL.mu, MODEL.sd);
+      ctx.strokeStyle = '#818cf8';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Where the market actually resolved.
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(px(RESULT), top - fs * 0.2); ctx.lineTo(px(RESULT), base); ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.strokeStyle = '#334155';
+      ctx.beginPath(); ctx.moveTo(padX, base); ctx.lineTo(w - padX, base); ctx.stroke();
+
+      ctx.font = `500 ${fs}px Inter, system-ui, sans-serif`;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#64748b';
+      for (let x = 250; x < X1; x += 50) ctx.fillText(String(x), px(x), base + fs * 1.2);
+      ctx.fillStyle = '#fbbf24';
+      ctx.textAlign = 'right';
+      ctx.fillText(`Result ${RESULT}`, px(RESULT) - fs * 0.4, top);
+      ctx.textAlign = 'left';
+
+      // Legend
+      const ly = h * 0.11;
+      let lx = padX;
+      const key = (label: string, color: string, dashed: boolean) => {
+        ctx.strokeStyle = color; ctx.lineWidth = 2;
+        ctx.setLineDash(dashed ? [4, 3] : []);
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + fs * 1.4, ly); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText(label, lx + fs * 1.9, ly);
+        lx += fs * 1.9 + ctx.measureText(label).width + fs * 1.6;
+      };
+      key('Market', '#94a3b8', true);
+      key('Model', '#818cf8', false);
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.55)';
+      ctx.fillRect(lx, ly - fs * 0.4, fs * 0.8, fs * 0.8);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText('Edge', lx + fs * 1.3, ly);
+
       _rafId = requestAnimationFrame(draw);
     };
     draw();
