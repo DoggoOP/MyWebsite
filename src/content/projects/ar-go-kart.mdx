@@ -11,17 +11,24 @@ order: 10
 
 ## A physical kart on a virtual course
 
-I built an augmented reality go-kart experience around a **real, drivable kart**. A Meta Quest 3 places a virtual track and objects over the driver's view of the real world. Driving through an object changes the kart's speed response: one object speeds the kart up, while another slows the kart down. The game event has a physical effect rather than only changing a display.
+We built an augmented reality go-kart around a **real, drivable kart**. The game, **TDX Cart**, is a mixed reality kart race inspired by Mario Kart. The rider walks or drives a loop once to record the course, and a Meta Quest 3 lays a glowing rainbow road over the real ground with coins and items along the road. Picking up an item changes how the real kart drives. A coin, for example, raises the kart's top speed by 4%. The game event has a physical effect rather than only changing a display.
 
 ## Building the kart
 
-I **welded the go-kart together** and handled the mechanical and electrical integration. The frame, motor hardware, and electronics all had to work as one physical build. Fabrication and wiring were part of the same project as the AR interaction.
+Beyond the software, we **sourced the parts**, **designed the electrical components**, and **welded the frame** together. The frame, motor hardware, and electronics all had to work as one physical build, so fabrication and wiring were part of the same project as the AR game.
 
 ## Connecting the game to the throttle
 
-I worked on the kart's electrical system and **intercepted the throttle signal** before the signal reached the motor controller. A Raspberry Pi connects the virtual-object events to that control path. When the kart passes through an object in the Quest 3 experience, the Pi changes the command sent onward, so the motor controller responds with a faster or slower speed request.
+We **intercepted the throttle signal** between the foot pedal and the motor controller. A Raspberry Pi sits in that path. An ADC reads the pedal, the Pi combines the pedal position with a speed multiplier from the headset, and a DAC writes the result to the motor controller. The headset adds up the active boosts and streams the multiplier to the Pi 20 times a second over UDP, through a Wi-Fi hotspot hosted on the Pi. On the bench, full pedal gave about 2.47 V at a multiplier of 1.00 and ramped smoothly to about 2.95 V at 1.30.
 
-That required bringing together headset interactions, software, signal wiring, and motor control. The key interface is the handoff from a virtual event to a real electrical command; the rider feels the result through the real kart.
+<figure>
+  <video src="/assets/ar-go-kart-test.mp4" controls playsInline preload="metadata" poster="/assets/ar-go-kart-test-poster.jpg" aria-label="Bench test of the AR go-kart control path, with the motor and controller on a lab bench while a person in a Meta Quest 3 walks through the virtual course"></video>
+  <figcaption>Bench test of the control path. My friend walks through the AR course in a Meta Quest 3, where coins and mushrooms on the ground speed the motor up or slow the motor down. Turn the sound on to hear the motor's pitch change.</figcaption>
+</figure>
+
+Safety is handled at both ends. The app always runs in passthrough mode, hides virtual content whenever tracking is uncertain, and sends a multiplier of zero while tracking is lost, so the kart gets no motor power. If the headset stops sending, the Pi returns the throttle to neutral, and the kart also has a physical kill switch.
+
+As of October 2026, the full chain from foot pedal through the Pi to the motor controller runs with boosts on the bench. A hardware watchdog and the first full ride are next.
 
 The schematic describes the control architecture, not a measured speed change or a claim about the system's operating limits.
 
