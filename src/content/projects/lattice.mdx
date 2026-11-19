@@ -1,39 +1,33 @@
 ---
 title: Lattice
-description: Distributed multi-sensor volumetric capture system reconstructing navigable 3D point clouds for desktop, web, and HoloLens — shortlisted for Grand Prize at TreeHacks 2026.
-tagline: 4D volumetric telepresence, TreeHacks 2026
+description: Multi-camera volumetric capture that rebuilds a scene in metric 3D as the scene moves. We built the first version at TreeHacks 2026, where Lattice was shortlisted for the Grand Prize, and I co-founded Lattice as a company afterward to capture 4D data for robotics.
+tagline: Multi-camera 4D capture, from TreeHacks to a startup
 coverImage: /assets/tempo3.png
 animation: lattice
 date: "2026-02-01"
-tags: [c++, csharp, threejs, websocket, kinect, opengl, hackathon]
+tags: [calibration, cuda, c++, csharp, kinect, zed, streaming, hololens]
 order: 1
 links:
   github: https://github.com/DoggoOP/Tempo
   demo: https://devpost.com/software/tempo-l1idkw
 ---
-
 import PointCloudViewer from '../../components/PointCloudViewer.tsx';
 
-<div style="height: 500px; margin: 0 0 40px; border-radius: 8px; overflow: hidden;">
+<div style="height: 500px; margin: 0 0 40px;">
   <PointCloudViewer src="/assets/3dImage-clean.lssnap" filter={false} client:only="react" />
 </div>
 
-## Overview
+## What Lattice does
 
-Lattice is a real-time volumetric capture + playback platform that turns physical moments into saveable, navigable 6D media built at TreeHacks 2026, where Lattice was shortlisted for the Grand Prize. You can move around and interact with an object in front of you, not a video on a screen.
+Lattice records a scene from several synchronized, calibrated cameras and rebuilds the scene in metric 3D for every frame. One capture gives multiview and egocentric video, human and object motion, pose, and views from angles no camera occupied, all from the same measured geometry. The capture above was recorded with Lattice. Drag to orbit.
 
-Lattice connects capture, reconstruction, data transport, and interaction all into one continuous pipeline:
+I co-founded Lattice with Anton and Yair after TreeHacks. The hackathon build streamed live 3D to a HoloLens. The company now builds capture rigs that record people doing physical work, so robotics teams can train on real motion with correct 3D geometry.
 
-1. Multi-sensor ingest
-2. Calibration (Orthogonal Procrustes Alignment) and fusion [1],[5], optional geometric (ICP) refinement [2]
-3. Temporal buffering + indexing (live + recorded timelines)
-4. Compression/chunking for streaming/recording [7]
-5. Rendering outputs including Gaussian-splats [8]
-6. Multi-endpoint playback (AR, VR, desktop/TV, mobile/web)
+## The TreeHacks build
 
-On immersive devices like the HoloLens 2 (AR), the user's interaction with the app is spatial and gesture-native, built into the Lattice app for HoloLens 2. However, on flat displays, the Ultraleap Leap Motion adds direct hand-based manipulation so volumetric content remains fully interactive even outside AR/VR.
+Three Kinect v2 sensors each fed a client laptop, because the Kinect SDK allows one sensor per PC. The C++ clients streamed color and depth over TCP to a C# server that calibrated the sensors, fused the three clouds, buffered the timeline, and served the result to three viewers on separate ports: a HoloLens 2 app with pinch, grab and voice control, a browser viewer with touch controls, and a desktop viewer driven by a Leap Motion controller. We started from LiveScan3D, an open-source Kinect capture system [3], and built the replay, annotation and multi-viewer layers on top.
 
-<div style="position:relative; padding-bottom:56.25%; height:0; overflow:hidden; border-radius:8px; margin:16px 0;">
+<div style="position:relative; padding-bottom:56.25%; height:0; overflow:hidden; margin:16px 0;">
   <iframe
     src="https://www.youtube.com/embed/YqKwPFIWVN0"
     style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;"
@@ -42,132 +36,63 @@ On immersive devices like the HoloLens 2 (AR), the user's interaction with the a
   />
 </div>
 
-## Inspiration
-For nearly two centuries, cameras have helped us record history, but they’ve always flattened what they record. Even with monumental improvements in the recording quality (Higher resolution, 360°, spatial audio), videos still force you to stand where the camera stood. You can watch the past, but you can’t walk around in a recording, inspect a detail, interact with a scene, or truly step back into a moment.
+A rolling RAM buffer keeps the last 30 seconds, so any moment can be replayed and orbited. Annotations drawn in one viewer appear in every other viewer. A diff mode overlays a saved frame in red against the live frame in green, which shows exactly what moved in a scene.
 
-Lattice treats recording time and history as a spatial endeavour, capturing moments as full 3D environments that can be revisited, navigated, and projected back into the world through holograms and 3D tracking. Instead of replaying footage, you can relive events and explore them as a navigable space.
+<figure>
+  <img src="/assets/tempo3.png" alt="Fused Kinect point cloud of a calibration marker on the floor with annotations drawn over the scene" loading="lazy" />
+  <figcaption>Fused capture of the calibration marker with live annotations.</figcaption>
+</figure>
 
-Our goal is a long-term system for preserving real events, so future generations can experience moments in history, science, and everyday life as places, not recordings.
+### Calibration
 
-## Key Capabilities
-1. Live streaming of holographic capture to any screen
-- Watch a live volumetric reconstruction from any angle with pause, rewind, scrub, orbit, translate, scale
-- Supports cross-platform streaming at the same time
-2. Capture once, replay anywhere
-- Replay the 3D reconstruction with the same controls as the live stream
-- Also works cross-platform
-3. Markups/Annotations
-- Draw, highlight, and annotate with multiple colour options, directly on the scene, while live streaming
-- Shared annotations will be seen on all the shared streams (including cross-platform)
+We first calibrated with PnP: detect the printed marker in each camera's color image and solve for that camera's pose. During the hackathon those poses were not accurate enough to make the three clouds line up, so we switched to aligning in 3D. Each Kinect measures the marker in the camera's own depth data, an Orthogonal Procrustes solve [1] gives the rigid transform from that camera to the marker frame, and ICP [2] refines the overlap afterward. Procrustes returned flipped solutions when two cameras faced the marker from 180° apart, so we added checks that reject bad rotation candidates and test each solution against the other cameras.
 
-<div style="margin: 24px 0; border-radius: 8px; overflow: hidden;">
-  <img src="/assets/tempo3.png" style="width: 100%; display: block;" />
-</div>
+<figure>
+  <img src="/assets/tempo2.png" alt="Diff view with a saved capture in red overlaid on the live capture in green" loading="lazy" />
+  <figcaption>Diff view. Red is a saved frame and green is live.</figcaption>
+</figure>
 
-4. Instant replay of last 30 seconds
-- Similar to NVIDIA shadowplay, uses a rolling RAM buffer to continuously store the last N seconds (customizable, but defaults to 30)
-5. Temporal difference comparison (Git diffs for reality)
-- Compare saved reference frames to each other, or to the current live view
-- Previous (saved) frames will show up as red, current/live in green
+### Keeping a 3-sensor stream live
 
-<div style="margin: 24px 0; border-radius: 8px; overflow: hidden;">
-  <img src="/assets/tempo2.png" style="width: 100%; display: block;" />
-</div>
+- **Backpressure.** Ingest, fusion, compression and playback each ran at a different rate. Bounded queues and ring buffers that drop stale frames stopped one slow stage from stalling the rest.
+- **Memory.** The stack crosses C++ and C#, and garbage-collection pauses showed up as playback hitches. We cut allocation churn and reused pinned buffers across frames.
+- **Point throughput.** Reworking the point layouts for SIMD, plus frustum culling and level of detail, kept fusion and rendering inside the frame budget.
+- **Sensor interference.** The Kinects' infrared projectors interfered with each other during calibration, so sensor placement became part of the calibration procedure.
 
-6. Separate interactions for streaming endpoints
-- HoloLens 2: pinch/grab + voice commands, spatial and gesture-native
-- 2D displays: uses Leap Motion for hand tracking to rotate/translate/scale/scrub
-- Mobile/web: touch gestures for zoom/rotate/translate
+## Lattice now
 
-## How we built Lattice
-### Core Hardware:
+The current rig uses four ZED X stereo cameras on GMSL2, hardware-synced to under 100 µs. A Jetson AGX Orin only captures and encodes, then sends frames over a 25 GbE link to a workstation with two RTX 5090s, which runs depth, reconstruction and streaming. Viewers connect through a Cloudflare MoQ relay.
 
-- 3 Microsoft Xbox Kinect One v2 Sensors
-- 3 client laptops (one per kinect due to SDK constraints)
-- 1 server laptop
-- Microsoft Hololens 2
-- Ultraleap Leap Motion
+**Reconstruction.** A 26-stage CUDA pipeline fuses the cameras, meshes the surface, completes missing depth and completes occluded body parts. Each camera runs in a separate worker process under MPS, and frames are paired by hardware timestamp, because sequence counters drift once processes run independently. A TSDF voxel only meshes after three integration passes agree, which removes ghost surfaces left by moving people. Depth fill runs at 3.5 ms per frame.
 
-### System Architecture (Distributed Client-Server Architecture):
+**Calibration.** The rig is calibrated once with a ChArUco board, and a self-calibration step runs on every take after that. I designed the self-calibration residual around pixel-ray agreement between cameras instead of depth-to-depth ICP. Depth is computed from the calibration, so using depth to estimate the calibration converges to a self-consistent wrong answer. ICP now only audits the result.
 
-- Client apps: sensor control + stream frames
-- Server app: calibration, synchronization, fusion, buffering, compression/chunking, multi-endpoint distribution (live stream output)
+**Body tracking.** 2D keypoints from each camera are triangulated with a weighted least-squares ray intersection, then a body model with about 130 degrees of freedom is fitted with Levenberg-Marquardt. LM brought the fit error from 111 mm to 0.17 mm in six iterations, while Adam diverged on the same problem. A Gauss-Newton correction runs every render frame in under 1.5 ms for two people.
 
-Lattice uses the Kinects for their LiDAR + RGB capture capabilities [6]. Three sensors send their data through associated instances of the client app to a central server app that calibrates and merges the data into a single 3D point-cloud scene [3],[4].
+**Streaming.** An exact encoding of the reconstruction needs 5.7 Gbps on a link of about 700 Mbps. The custom splat format packs each splat into 0.905 bytes, about eight times smaller, with a median normal error of 5.7° or less, using quantization along each camera ray and context-modeled rANS entropy coding. Splat order turned out to be a compression parameter: one reordering cut neighbor availability from 97.5% to 18.1% and turned a 6.9% gain into a 6.9% loss.
 
-### Calibration + Reconstruction:
+### Does 3D capture make better robot data?
 
-- Marker-based multi-camera alignment using Orthogonal Procrustes by calculating the necessary transformation from each sensor to the calibration marker given the marker's coordinates (default to 0,0,0) [1],[5]. Initial calibration also checks against flipped solutions for edge cases of Procrustes.
-- ptional ICP refinement after calibration and filtering point cloud [2],[4]
-- Compressed chunk recording for live streaming + replay [7]
-- Export path for Gaussian splats [8]
+I built our benchmarking, which asks whether multi-camera 4D capture is better robot training data than the best single camera from the same rig. Each link in the chain is pre-registered and graded by a held-out referee camera that neither source used, with a paired z above 2 to pass.
 
-### Tech Stack:
+- **Measurement.** Cloth reconstruction is 37.8% more accurate (30.3 mm against 60.0 mm). About a third of the gain comes from the extra cameras' cloth points and the rest from the multi-camera body and hand fit.
+- **Usable data.** Single-camera hands leave gaps inside contacts, so they cannot drive a cloth twin. Retargeted to a Unitree G1, 60 of 100 Lattice demos replay against 25 of 100.
+- **Policy.** Diffusion Policy trained on Lattice demos succeeds on 109 of 150 episodes against 82 of 150 (z = 3.36). In an Isaac Lab-Arena pick-and-place task, Lattice data scores 0.73 against 0.55 for the best single camera, still wins with the demo count matched, and pooling all four single cameras without fusion only reaches 0.43, so the gain comes from the cross-camera fusion. Shifting the actions one second late drops the score to 0 of 50, which shows the benchmark can tell good data from corrupted data.
+- **World model.** Fine-tuning NVIDIA's PointWorld on Lattice data lands 6.4% closer to the referee camera than the public model and 47.3% closer than single-camera data.
 
-- Languages: C, C++, C#, HTML/CSS, Python
-- Libraries: Kinect Studio v2.0 SDK, OpenCV, ICP Pipeline [2],[4]
-- XR: Unity + Hololens 2
-- Hand tracking: Ultraleap Leap Motion, Ultraleap Hyperion
+The negative results stay on the record. On a cloth-fold simulation benchmark, our fused reconstruction lost to a single raw camera (44.1 mm against 26.9 mm surface divergence). I ruled out three confounds with evidence before writing the cause down as unknown; the leading idea is that more accurate surface relief is not something the simulator handles well. A cloth world model fine-tuned on our data failed four registered tests, traced to the model's training targets drifting 7 to 26 mm above the measured cloth.
 
-## Challenges we ran into
-- Kinect v2 on Windows SDK allows only one sensor per machine. This could be bypassed on a lower level by using a different OS, but the tradeoff did not pay off for the rest of development, so we had to run a distributed topology with multiple client laptops plus a central server.
-- Calibration matrix transformation rotations had some trouble with the marker being placed in certain directions (for example, the Orthogonal Procrustes method didn't account for the images being 180 degrees apart). We implemented functions to reject bad rotation candidates, and add consistency checks to avoid flipped alignment states.
-- Sensor interference, especially during calibration: The LiDAR sensors in the Kinects would sometimes interfere with one another if not positioned well enough, leading to inaccurate or slower detection
-- Handling high-frequency frame ingress, point-cloud fusion, temporal buffering, and compression, simultaneously pushed the RAM and VRAM, which caused a lot of instability and system issues, like momentary freezes and crashes. We had to implement memory discipline.
-- Managed/unmanaged interop and Garbage collection stalls: our stack crosses C++ and C# , so object lifetime management became very complex. Garbage collection sometimes paused randomly, and we suspect the cause was pinned buffers, native pointer handoff, and frequent allocations, so we had to minimize allocation churn and aggressively reuse buffers to prevent visible playback hitches.
-- Point processing performance depended heavily on memory layout and SIMD friendliness, and our initial, naive, structures killed cache efficiency. We improved vectorized execution paths, and reduced RAM traversal during filtering, fusion, and culling.
-- To keep interaction real-time, we needed aggressive frustum culling and LOD (level of detail). Finding the balance was hard, since being too aggressive made the clouds look unstable, but culling too little heavily increased latency.
-- The server laptop needs speed and significant computing power for fusing and rendering the multiple point cloud streams, so we had to optimize kernel granularity, batch sizes, and transfer timing so that GPU acceleration effectively improved latency.
-- When a previous stage outruns another the next one, the whole pipeline fails; Camera ingest, server fusion, compression, and client playback each had different throughput ceilings, so we implemented queue limits, ring buffers, a dropped certain frames, to prevent buffer blowups and cascading stalls.
-- We knew from the start that cross-platform output modules were essentially separate, unrelated products, and programming all of them took a long time. The server creates one volumetric reconstruction, which has to be serialized and rendered differently for each platform: Hololens, browser/mobile, desktop + Leap Motion all required unique transport, rendering, input mapping, and buffering logic
+### NVIDIA V2D challenge
 
-## Use cases
-A few examples:
+Track 1 of NVIDIA's V2D challenge asks for a full human-object interaction (body, object shape and pose, metric scale, one world frame) from a single uncalibrated RGB video. We built our own method instead of adopting NVIDIA's baseline: one persistent world state for the person, object and room, fitted jointly over each episode, with every residual (body measurement, object track, silhouette, contact, no interpenetration, smooth motion) weighted by that source's measured noise instead of hand-tuned rules.
 
-- Education: Teachers can stream a live scene to any screen, and students can watch live or replay the same capture. Both teachers and students can annotate any points of curiosity during live stream
-- Science and research labs: Record experiments, use diffs view to detect changes between baseline different state
-- Industrial inspection: capture known "good" reference states, then run diff view during checks
-- Sports/entertainment: rewind and view from any angle
-- Design iteration/prototyping physical work: diffs view would be useful for art, like pottery, sculpting, etc.)
-- Law enforcement: use replay or diffs view to see any changes in evidence at scenes.
-There are many more use cases; 3D telepresence and reality replay is not limited to the industries of today. Volumetric capture will become a whole new field, in the same way that peripherals like the mouse revolutionized the way we navigate digital technology.
+$$\min_{x}\sum_k \frac{1}{\sigma_k^2}\|r_k(x)\|^2 \quad \text{subject to no penetration}$$
 
-### Accomplishments that we are proud of
-- Built a fully working volumetric display and replay system
-- Created multiple media viewing points for the volumetric display, all with interactive controls that are different from each other, but intuitive (XR, web + mobile, flat screen + leap motion)
-- Designed an efficient and accurate calibration, refinement, and noise-filtering system for multiple sensors.
-- We read more research (to figure out the math) than we have ever read before.
-
-### What we learned
-- Sensor calibration and 3D graphics optimization: Visual marker detection and calibration, ICP refinement, error correction, point cloud rendering and frame streaming, chunk selection/management, etc.
-- Multi-platform delivery works best when reconstruction and rendering are cleanly separated
-- Compression and indexing strategy directly affect both live and replay quality, latency, and user experience
-
-### Future Developments
-Short term (coming soon):
-
-- Improve reconstruction quality and temporal stability
-- Add timeline tooling (bookmarks, annotations, key-moment jumps)
-- Support for LLM analyses of videos
-- Formalize VR playback support as a native endpoint (building on current volumetric output pipeline)
-- Integrate newer sensors (with both LiDAR and RGB capture capability) rather than the outdated Kinect sensors Long term (future ambitions):
-- Implement auto-calibration without a marker sheet
-- Output a mesh instead of a point cloud to improve visualization resolution, and allow for ray-tracing
+Our submission ranked 2nd of 56 teams on human joint acceleration error and 5th on object acceleration error, and beat NVIDIA's CARI4D baseline on all five boards: 93% lower human acceleration error, 91% lower object acceleration error, and 17% and 24% lower Chamfer distance for the human and object meshes.
 
 ### References
-[1] P. H. Schönemann, “A Generalized Solution of the Orthogonal Procrustes Problem,” Psychometrika, vol. 31, no. 1, pp. 1–10, 1966, doi: 10.1007/BF02289451.
+[1] P. H. Schönemann, "A Generalized Solution of the Orthogonal Procrustes Problem," Psychometrika, vol. 31, no. 1, pp. 1–10, 1966, doi: 10.1007/BF02289451.
 
-[2] P. J. Besl and N. D. McKay, “A Method for Registration of 3-D Shapes,” IEEE Transactions on Pattern Analysis and Machine Intelligence, vol. 14, no. 2, pp. 239–256, 1992, doi: 10.1109/34.121791.
+[2] P. J. Besl and N. D. McKay, "A Method for Registration of 3-D Shapes," IEEE Transactions on Pattern Analysis and Machine Intelligence, vol. 14, no. 2, pp. 239–256, 1992, doi: 10.1109/34.121791.
 
-[3] B. Curless and M. Levoy, “A Volumetric Method for Building Complex Models from Range Images,” in Proc. SIGGRAPH, 1996, pp. 303–312, doi: 10.1145/237170.237269.
-
-[4] R. B. Rusu and S. Cousins, “3D is here: Point Cloud Library (PCL),” in 2011 IEEE International Conference on Robotics and Automation (ICRA), pp. 1–4, doi: 10.1109/ICRA.2011.5980567.
-
-[5] N. Garcia-D’Urso, B. Sanchez-Sos, J. Azorin-Lopez, A. Fuster-Guillo, A. Macia-Lillo, and H. Mora-Mora, “Marker-Based Extrinsic Calibration Method for Accurate Multi-Camera 3D Reconstruction,” arXiv:2505.02539, 2025.
-
-[6] L. Yang, L. Zhang, H. Dong, A. Alelaiwi, and A. El Saddik, “Evaluating and Improving the Depth Accuracy of Kinect for Windows v2,” arXiv:2212.13844, 2022.
-
-[7] A. Chen, S. Mao, Z. Li, M. Xu, H. Zhang, D. Niyato, and Z. Han, “An Introduction to Point Cloud Compression Standards,” GetMobile, vol. 27, no. 1, Mar. 2023.
-
-[8] B. Kerbl, G. Kopanas, T. Leimkühler, and G. Drettakis, “3D Gaussian Splatting for Real-Time Radiance Field Rendering,” arXiv:2308.04079, 2023
-
+[3] M. Kowalski, J. Naruniec, and M. Daniluk, "LiveScan3D: A Fast and Inexpensive 3D Data Acquisition System for Multiple Kinect v2 Sensors," in Proc. International Conference on 3D Vision (3DV), 2015, pp. 318–325, doi: 10.1109/3DV.2015.43.

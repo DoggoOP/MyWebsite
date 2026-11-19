@@ -26,7 +26,7 @@ const linkList = [
     <a href="/projects" class="back text-link">Projects</a>
     <h1 class="display hero-title">{title}</h1>
     <p class="hero-desc">{description}</p>
-    <p class="hero-meta">
+    <p class="hero-meta label">
       {year && <span>{year}</span>}
       {tags.length > 0 && <span>{tags.slice(0, 4).join(', ')}</span>}
       {linkList.map(l => <a class="text-link" href={l.href} target="_blank" rel="noopener">{l.label} ↗</a>)}
@@ -36,11 +36,6 @@ const linkList = [
   <figure class:list={['hero-figure', coverStyle && `is-${coverStyle}`]}>
     {animation === 'polymarket'
       ? <iframe class="hero-dashboard" src="https://polymarketdashboard-production.up.railway.app/" title="Polymarket live dashboard" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
-      : animation === 'ar-go-kart'
-        ? <picture class="hero-picture">
-            <source media="(max-width: 600px)" srcset="/assets/ar-go-kart-system-mobile.svg" />
-            <img class="hero-image" src={coverImage} alt="Augmented reality go-kart system schematic" />
-          </picture>
       : coverImage
         ? <img class="hero-image" src={coverImage} alt={`${title}`} />
         : <canvas id="hero-canvas" class="hero-canvas" aria-label={`${title} animated rendering`}></canvas>}
@@ -53,40 +48,39 @@ const linkList = [
   .project-hero {
     max-width: 760px;
     margin: 0 auto;
-    padding: calc(var(--nav-h) + 64px) 32px 40px;
+    padding: calc(var(--nav-h) + var(--s8)) var(--s6) var(--s7);
   }
   .back {
     display: inline-block;
-    margin-bottom: 28px;
+    margin-bottom: var(--s6);
     color: var(--text-muted) !important;
     font-size: 14px;
   }
   .back::before { content: '← '; }
   .hero-title {
-    font-size: 32px;
-    margin-bottom: 14px;
+    font-size: 44px;
+    margin-bottom: var(--s4);
   }
   .hero-desc {
     color: var(--text-secondary);
-    font-size: 18px;
-    line-height: 1.6;
+    font-size: 19px;
+    line-height: 1.55;
   }
   .hero-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px 22px;
-    margin-top: 22px;
+    gap: var(--s2) var(--s5);
+    margin-top: var(--s5);
     color: var(--text-muted);
-    font-size: 14px;
   }
 
   .hero-figure {
     max-width: 1080px;
     height: min(62vh, 600px);
-    margin: 16px auto 0;
-    padding: 0 32px;
+    margin: var(--s4) auto 0;
+    padding: 0 var(--s6);
   }
-  .hero-image, .hero-canvas, .hero-dashboard, .hero-picture {
+  .hero-image, .hero-canvas, .hero-dashboard {
     display: block;
     width: 100%;
     height: 100%;
@@ -95,69 +89,68 @@ const linkList = [
   }
   .hero-image { object-fit: contain; padding: 24px; }
   .hero-dashboard { border: 0; }
-  .is-diagram .hero-image, .is-diagram .hero-picture { background: #fff; }
+  .is-diagram .hero-image { background: #fff; }
   /* White plots hug their own width instead of a wide white slab. */
   .is-diagram .hero-image { width: auto; max-width: 100%; margin-inline: auto; }
-  .is-render .hero-image { background: #2e3440; }
-  .hero-picture .hero-image { background: transparent; }
+  .is-render .hero-image { background: #2c2c2a; }
 
   .project-content {
     max-width: 760px;
     margin: 0 auto;
-    padding: 56px 32px 120px;
-    line-height: 1.75;
-    font-size: 16px;
+    padding: var(--s8) var(--s6) var(--s9);
+    line-height: 1.7;
+    font-size: 17px;
     color: var(--text-secondary);
+    counter-reset: fig;
   }
+  .project-content > :global(:first-child) { margin-top: 0; }
+  .project-content :global(strong) { color: var(--text-primary); font-weight: 600; }
 
   .project-content :global(h2) {
-    font-size: 20px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-    line-height: 1.3;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
     color: var(--text-primary);
-    margin: 56px 0 14px;
+    margin: var(--s8) 0 var(--s4);
   }
   .project-content :global(h3) {
-    font-size: 16px;
-    font-weight: 500;
-    color: var(--text-primary);
-    margin: 32px 0 12px;
-  }
-  .project-content :global(h4) {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
     color: var(--text-primary);
-    margin: 24px 0 8px;
+    margin: var(--s6) 0 var(--s3);
   }
-  .project-content :global(p) { margin: 12px 0; }
+  .project-content :global(h4) {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: var(--s5) 0 var(--s2);
+  }
+  .project-content :global(p) { margin: var(--s3) 0; }
   .project-content :global(ul), .project-content :global(ol) {
-    padding-left: 24px;
-    margin: 12px 0;
+    padding-left: var(--s5);
+    margin: var(--s3) 0;
   }
-  .project-content :global(li) { margin: 6px 0; }
+  .project-content :global(li) { margin: var(--s2) 0; }
   .project-content :global(blockquote) {
-    border-left: 3px solid var(--accent-cyan);
-    padding-left: 20px;
-    margin: 20px 0;
+    border-left: 1px solid var(--text-muted);
+    padding-left: var(--s5);
+    margin: var(--s5) 0;
     color: var(--text-muted);
-    font-style: italic;
   }
   .project-content :global(code) {
     font-family: var(--font-mono);
     font-size: 13px;
-    background: rgba(255,255,255,0.06);
-    padding: 2px 6px;
-    border-radius: 4px;
-    color: var(--accent-cyan);
+    background: var(--bg-card);
+    padding: 2px 5px;
+    color: var(--text-primary);
   }
   .project-content :global(pre) {
-    background: rgba(23,29,33,0.96);
+    background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
-    border-radius: 2px;
-    padding: 20px;
+    padding: var(--s5);
     overflow-x: auto;
-    margin: 20px 0;
+    margin: var(--s5) 0;
   }
   .project-content :global(pre code) {
     background: none;
@@ -166,11 +159,11 @@ const linkList = [
   }
   .project-content :global(img) {
     width: 100%;
-    border-radius: var(--radius-card);
-    margin: 20px 0;
+    margin: var(--s5) 0;
   }
   .project-content :global(figure) {
-    margin: 28px 0 38px;
+    margin: var(--s6) 0 var(--s7);
+    counter-increment: fig;
   }
   .project-content :global(figure img) {
     display: block;
@@ -184,26 +177,35 @@ const linkList = [
     max-width: 100%;
     max-height: 70vh;
     margin-inline: auto;
-    background: #0d191f;
+    background: #000;
     border: 1px solid var(--border-subtle);
   }
+  /* Captions are numbered like figures in a report. */
   .project-content :global(figcaption) {
-    margin-top: 8px;
+    margin-top: var(--s2);
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.5;
+  }
+  .project-content :global(figure > figcaption)::before {
+    content: 'Fig. ' counter(fig);
+    margin-right: var(--s2);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 12px;
   }
   .project-content :global(table) {
     display: block;
     width: 100%;
     overflow-x: auto;
     border-collapse: collapse;
-    margin: 24px 0;
-    font-size: 13px;
+    margin: var(--s5) 0;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
     line-height: 1.5;
   }
   .project-content :global(th), .project-content :global(td) {
-    padding: 10px 12px;
+    padding: var(--s2) var(--s3);
     border-bottom: 1px solid var(--border-subtle);
     white-space: nowrap;
   }
@@ -214,7 +216,7 @@ const linkList = [
     border-top: 1px solid var(--border-subtle);
   }
   .project-content :global(tbody tr:hover) {
-    background: rgba(100, 156, 160, .07);
+    background: var(--bg-card);
   }
   .project-content :global(.study-slides) {
     display: flex;
@@ -222,17 +224,16 @@ const linkList = [
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     scrollbar-color: var(--border-accent) var(--bg-card);
-    margin: 28px 0 8px;
-    padding-bottom: 12px;
+    margin: var(--s6) 0 var(--s2);
+    padding-bottom: var(--s3);
   }
   .project-content :global(.study-slide) {
     box-sizing: border-box;
     flex: 0 0 100%;
     min-height: 320px;
-    padding: 30px 34px;
+    padding: var(--s6);
     border: 1px solid var(--border-subtle);
     background: var(--bg-card);
-    border-radius: var(--radius-card);
     scroll-snap-align: start;
   }
   .project-content :global(.study-slide-number) {
@@ -281,21 +282,20 @@ const linkList = [
     margin: 0 0 32px;
   }
   .project-content :global(iframe) {
-    border-radius: 2px;
-    margin: 16px 0;
+    margin: var(--s4) 0;
   }
   .project-content :global(hr) {
     border: none;
     border-top: 1px solid var(--border-subtle);
-    margin: 40px 0;
+    margin: var(--s7) 0;
   }
   @media (max-width: 600px) {
     .project-hero { padding: calc(var(--nav-h) + 36px) 20px 28px; }
-    .hero-desc { font-size: 16px; }
+    .hero-title { font-size: 34px; }
+    .hero-desc { font-size: 17px; }
     .hero-figure { height: 300px; padding: 0 20px; }
-    .hero-figure:has(.hero-picture) { height: 730px; }
     .hero-image { padding: 14px; }
-    .project-content { padding: 40px 20px 90px; }
+    .project-content { padding: var(--s7) 20px var(--s8); font-size: 16px; }
   }
 </style>
 <script>

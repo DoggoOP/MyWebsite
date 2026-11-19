@@ -27,21 +27,22 @@ const {
     <title>{title}</title>
     <link rel="icon" type="image/png" href="/assets/ek-vorticity.png" />
     <link rel="apple-touch-icon" href="/assets/ek-vorticity.png" />
+    <link rel="ard" href="/.well-known/ard.json" />
+    <link rel="alternate" type="text/markdown" href="/llms.txt" title="llms.txt" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&display=swap" />
     {math && <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />}
     <ViewTransitions />
   </head>
   <body>
     {!noNav && <Nav />}
     <slot />
+    <script>import '../scripts/webmcp';</script>
   </body>
 </html>
 
 <style is:global>
-  @keyframes page-fade-in { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes page-fade-out { from { opacity: 1; } to { opacity: 0; } }
-  ::view-transition-old(root) { animation: 180ms ease-out page-fade-out; }
-  ::view-transition-new(root) { animation: 240ms ease-in page-fade-in; }
+  /* Pages swap instantly, like turning a page, with no cross-fade. */
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
 </style>

@@ -7,7 +7,7 @@ coverStyle: diagram
 animation: sailing-rl
 date: "2023-07-01"
 tags: [reinforcement-learning, cfd, python, wolfram, simulation, sailing]
-order: 4
+order: 7
 links:
   github: https://github.com/DoggoOP/SailingReinforcementLearning
   paper: https://community.wolfram.com/groups/-/m/t/2963984
@@ -17,7 +17,7 @@ links:
 
 ## Overview
 
-Sailing upwind requires constantly balancing two competing forces: sailing at a tighter angle to the wind (closer to straight upwind) covers less distance but moves slower, while sailing at a wider angle moves faster but covers more ground. This project tackles that tradeoff by simulating the aerodynamics from first principles, then training a reinforcement learning agent to find time-optimal tacking routes through stochastic wind fields.
+Every upwind leg in a race is a trade. Pointing closer to the wind covers less distance but the boat is slower; footing off is faster but sails farther. On top of that, every tack costs speed, and the wind shifts and gusts across the course. I raced through those calls for years, so I wanted to see whether an agent could learn them from physics alone. I simulated the sail aerodynamics from first principles, then trained a reinforcement learning agent to find the fastest route to an upwind mark through a shifting wind field.
 
 The pipeline has three stages:
 
@@ -44,7 +44,7 @@ $$L = C_{l,\text{main}} \cdot A_{\text{main}} \cdot \tfrac{1}{2} \rho v^2 + C_{l
 
 where $\rho = 712$ (air density used in simulation), $A_{\text{main}} = 8.673\;\text{m}^2$, $A_{\text{jib}} = 3.738\;\text{m}^2$.
 
-Simulations were run for every combination of wind speed, boat angle, and sail angle, parallelized across kernels. The sail angle yielding maximum lift was retained for each (wind speed, boat angle) pair — for almost all cases this was 0°.
+Simulations were run for every combination of wind speed, boat angle, and sail angle, parallelized across kernels. The sail angle giving maximum lift was retained for each (wind speed, boat angle) pair, and in almost every case the best sail angle was 0°.
 
 ## Reinforcement Learning Environment
 
@@ -67,14 +67,14 @@ The observation space is 252-dimensional, encoding:
 
 ## Training
 
-The agent was trained with PPO using a learning rate of 0.003, entropy coefficient of 0.1 (higher than default to encourage exploration), and a discount factor of 0.95. Training ran in 100,000-step blocks until mean reward over 10 evaluation episodes exceeded 1,000,000.
+I trained the agent with PPO (learning rate 0.003, discount factor 0.95, and an entropy coefficient of 0.1, well above the default, to push exploration) in 100,000-step blocks until the mean reward over 10 evaluation episodes passed 1,000,000.
+
+The reward above is the result of many rounds of tuning by hand. Early agents found three ways to fail. Some never tacked and sailed off on one board until they left the course. Some tacked endlessly, because every tack looked like progress. Some kept sailing without heading for the mark at all. Each failure meant reweighting the terms: how hard to punish a tack, how much speed a tack costs while the boat turns through the wind, and how strongly to reward sailing into stronger pressure so the agent would learn what a gust is worth.
 
 ## Results
 
-The trained PPO agent successfully learned to tack upwind, producing a zigzag path that a competitive sailor would recognize as tactically correct — sailing on the lifted tack toward the layline, tacking at the right moment, and heading up to the mark. The agent also learned to seek out patches of stronger wind (gusts) and lifts to reduce distance sailed, consistent with real racing strategy.
+The trained agent sails upwind in the zigzag a racer would sail: out on the lifted tack, a tack at the layline, and up to the mark. The agent also learned to head for gusts and lifts to cut the distance sailed. The most satisfying result was the layline: the agent learned to sail out to the layline before tacking, the same call a competitive sailor makes.
 
-## Limitations and Future Work
+## Next steps
 
-The current model has several simplifications: sail shapes were estimated rather than measured, sails are modeled as rigid (real sails deform under load), water current is not modeled, and the wind field is synthetic rather than meteorological. Only upwind sailing is modeled — downwind legs requiring a spinnaker are not included.
-
-Future directions include adding accurate sail measurements and a vang parameter to control mainsail twist, introducing downwind sailing with a spinnaker, replacing the synthetic wind field with real race-day data for post-race route analysis, increasing LBM resolution using cloud computing, and extending path optimization to a full race course with multiple marks.
+The sails are rigid Bézier shapes fitted to measured arc lengths, the wind field is synthetic, and the model covers upwind legs only. Next I would add a vang parameter for mainsail twist, a downwind leg with a spinnaker, real race-day wind for post-race route analysis, higher-resolution LBM runs in the cloud, and a full course with multiple marks.

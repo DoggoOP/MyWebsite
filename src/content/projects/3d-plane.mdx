@@ -1,46 +1,40 @@
 ---
 title: 3D Printed Plane
-description: My first 3D-printed wing design for a 1.8 m fixed-wing plane, with a modular airframe intended to travel with me to Malaysia.
+description: A 1.8 m fixed-wing plane with my first 3D-printed wing, built in sections that key together so the plane could travel with me to Malaysia as a platform for monitoring sea-turtle poaching.
 tagline: A lighter printed wing, built in sections for travel
 coverImage: /assets/plane-printed-build.jpg
 animation: 3d-plane
 date: "2023-06-01"
 tags: [3d-printing, cad, uav, fusion360, aerodynamics, rc]
-order: 6
+order: 9
 ---
 
 ## Why a modular wing
 
-I designed this 1.8 m fixed-wing plane with **travel to Malaysia** in mind. A one-piece wing would be awkward to print, pack, and carry, so I split the airframe into sections. That made the joints part of the design from the start: each section has to align when assembled, while the main structural path still needs to carry loads across the span.
-
-This was my **first time designing a 3D-printed wing**. The CAD work taught me that reducing print material is only useful if the structure left behind can still support the wing.
+I designed this 1.8 m fixed-wing plane as an autonomous platform for monitoring sea-turtle poaching along Malaysia's coast, so the plane had to travel with me. A one-piece wing is awkward to print, pack and carry, so I split the airframe into printed sections that key together, which made the joints part of the design from the start.
 
 <figure>
   <img src="/assets/plane-printed-build.jpg" alt="Red and blue printed plane sections, wing panels, fuselage, and tail laid out during assembly" loading="lazy" />
-  <figcaption>Printed airframe sections during assembly. The separate panels made the plane easier to build and pack for travel.</figcaption>
+  <figcaption>Printed airframe sections during assembly.</figcaption>
 </figure>
 
 <figure>
   <img src="/assets/plane-wing-assembly.png" alt="Fusion 360 rendering of the modular wing assembly with open bays and section joints" loading="lazy" />
-  <figcaption>The wing assembly in CAD. Separate panels and open bays reduce printed material and make the span easier to transport.</figcaption>
+  <figcaption>The wing assembly in Fusion 360. Separate panels and open bays cut printed mass and break the span into packable pieces.</figcaption>
 </figure>
 
-## What the wing taught me
+## Designing a printed wing
 
-The open bays in the printed panels remove material that a solid print would use. The **spar matters more than simply adding plastic back**: the spar provides a continuous path for the wing's bending loads, while the printed structure defines the airfoil shape and transfers loads into that path. The panel joints also need to keep the sections aligned without becoming unnecessarily heavy.
+This was my first 3D-printed wing. Open bays inside each panel remove plastic a solid print would carry, and the panel edges key into each other so the sections line up on assembly. The printed skin holds the airfoil shape; the bending load across the span belongs to a spar.
 
 <figure>
   <img src="/assets/plane-wing-panel.png" alt="Close-up CAD rendering of a 3D-printed wing panel showing lightening bays and the edge joint" loading="lazy" />
-  <figcaption>A closer look at the cutouts and the panel edge. The geometry is a weight-saving iteration, not a measured structural result.</figcaption>
+  <figcaption>Lightening bays and the panel joint.</figcaption>
 </figure>
-
-## What happened in the first build
-
-Without a spar, the wing deflected substantially. That flexibility contributed to unstable behavior and made clear that lightening the printed panels could not substitute for a continuous bending member. The video records an early hand-launch trial, not a structural measurement.
 
 <figure>
-  <video src="/assets/plane-wing-deflection.mp4" controls muted playsInline preload="metadata" poster="/assets/plane-printed-build.jpg" aria-label="Early hand-launch trial of the 3D-printed plane"></video>
-  <figcaption>Early hand-launch trial. The experience exposed the need for a spar and a stiffer, better-aligned wing assembly.</figcaption>
+  <video src="/assets/plane-wing-deflection.mp4" controls muted playsInline preload="metadata" poster="/assets/plane-printed-build.jpg" aria-label="Hand-launch flight test of the 3D-printed plane"></video>
+  <figcaption>Hand-launch flight test.</figcaption>
 </figure>
 
-I also saw instability around the tail in the pusher-prop configuration. I would revisit the center of gravity, static margin, tail size, and propeller flow before attributing that behavior to any one component. For the next iteration, I would establish a spar route first, measure wing stiffness with the sections assembled, and then remove material around the verified load path.
+The flight tests taught me the main lesson of the project: in a printed wing, the spar comes first. Route a continuous spar through the panels, then remove material around that load path.

@@ -154,8 +154,8 @@ const pieces = [
 
   .section { margin-top: 96px; }
   .section-title {
-    font-size: 20px;
-    margin-bottom: 16px;
+    font-size: 28px;
+    margin-bottom: var(--s4);
   }
   .text { max-width: 640px; }
   .text p {
@@ -213,7 +213,6 @@ const pieces = [
     height: 100%;
     object-fit: cover;
     opacity: 0;
-    transition: opacity .35s ease;
   }
   .piece-image img.is-shown { opacity: 1; }
   .dots {
@@ -224,15 +223,12 @@ const pieces = [
     display: flex;
     gap: 6px;
     padding: 5px 8px;
-    border-radius: 999px;
-    background: rgba(15, 19, 20, .45);
+    background: rgba(13, 13, 12, .6);
   }
   .dots i {
     width: 6px;
     height: 6px;
-    border-radius: 50%;
     background: rgba(255, 255, 255, .45);
-    transition: background .2s;
   }
   .dots i.is-on { background: #fff; }
 
@@ -243,8 +239,8 @@ const pieces = [
     gap: 12px;
     margin-top: 14px;
   }
-  .piece-title { font-size: 16px; }
-  .piece-year { color: var(--text-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .piece-title { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+  .piece-year { color: var(--text-muted); font: 12px var(--font-mono); font-variant-numeric: tabular-nums; }
   .piece-materials {
     margin-top: 6px;
     color: var(--text-muted);

@@ -1,30 +1,30 @@
 ---
 title: Automated Light Switch
-description: A motorized wall-switch retrofit with a lead-screw actuator and an ESP32 control prototype, designed to move the existing switch without any rewiring.
+description: A motorized retrofit that flips an existing wall switch with a lead-screw actuator and an ESP32, with no rewiring. I still use the switch every day.
 tagline: Lead-screw actuation for an existing wall switch
 coverImage: /assets/light-switch-leadscrew-cad.png
 animation: light-switch
 date: "2022-12-01"
-tags: [hardware, iot, embedded, 3d-printing, esp32]
-order: 7
+tags: [hardware, embedded, 3d-printing, esp32, cad]
+order: 10
 ---
 
 ## Retrofit mechanism
 
-I designed this prototype to operate an existing wall switch mechanically, without changing the building wiring. The CAD model uses a **lead screw and guided carriage** to move the actuator across the switch. That layout lets me work out the travel, mounting clearance, and alignment before building the housing.
+I wanted automated lights without touching the building wiring, so the device works the existing switch the way a hand does. A **lead screw** drives a **guided carriage** across the switch, which turns the motor's rotation into a short, strong linear push in either direction. I laid out the travel, mounting clearance and alignment in CAD first, then designed the printed housing around that layout.
 
 <figure>
   <img src="/assets/light-switch-leadscrew-cad.png" alt="CAD close-up of the light-switch lead screw, guide rod, carriage, and motor mount" loading="lazy" />
-  <figcaption>Lead-screw drive and guide geometry in CAD.</figcaption>
+  <figcaption>Lead-screw drive, guide rod and carriage.</figcaption>
 </figure>
 
-## Control prototype
+## Control
 
-The wall-mounted prototype places the actuator beside the switch. An **ESP32 board** and push button are wired on a breadboard for control testing; the wiring is still exposed at this stage. The photo documents the physical arrangement and test setup, rather than a finished enclosure or a verified phone, voice, or scheduling feature.
+An **ESP32** drives the motor and reads a push button mounted beside the switch.
 
 <figure>
-  <img src="/assets/light-switch-prototype.jpg" alt="Wall-mounted light-switch actuator wired to an ESP32 and push button on a breadboard" loading="lazy" />
-  <figcaption>Actuator and ESP32 control setup during prototyping.</figcaption>
+  <img src="/assets/light-switch-prototype.jpg" alt="Wall-mounted light-switch actuator wired to an ESP32 and push button" loading="lazy" />
+  <figcaption>The actuator mounted beside the switch, with the ESP32 and push button.</figcaption>
 </figure>
 
-The next mechanical checks are repeatable switch travel, end-stop behavior, and mounting stiffness. Those tests matter because the actuator has to move the switch reliably without loading the switch beyond normal travel.
+The switch has run reliably since I finished the build, and I use the switch every day.

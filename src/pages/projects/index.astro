@@ -23,7 +23,7 @@ const yearOf = (date?: string) => date ? new Date(`${date}T00:00:00`).getFullYea
             </div>
             <div class="meta">
               <h2 class="title">{p.data.title}</h2>
-              {yearOf(p.data.date) && <span class="year">{yearOf(p.data.date)}</span>}
+              {yearOf(p.data.date) && <span class="year label">{yearOf(p.data.date)}</span>}
             </div>
             <p class="tagline">{p.data.tagline}</p>
           </a>
@@ -37,10 +37,14 @@ const yearOf = (date?: string) => date ? new Date(`${date}T00:00:00`).getFullYea
   .grid {
     list-style: none;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 48px 28px;
-    margin-top: 56px;
+    /* The four main projects get large cards; the rest sit three across. */
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: var(--s7) var(--s6);
+    margin-top: var(--s8);
   }
+  .grid > li { grid-column: span 2; }
+  .grid > li:nth-child(-n + 4) { grid-column: span 3; }
+  .grid > li:nth-child(-n + 4) .title { font-size: 22px; }
 
   .card { display: block; }
 
@@ -48,52 +52,53 @@ const yearOf = (date?: string) => date ? new Date(`${date}T00:00:00`).getFullYea
     position: relative;
     aspect-ratio: 4 / 3;
     overflow: hidden;
-    border-radius: var(--radius-card);
     background: var(--bg-card);
+    outline: 1px solid var(--border-subtle);
+    outline-offset: -1px;
   }
   .thumb img, .thumb canvas {
     display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform .5s cubic-bezier(.2, .7, .2, 1);
   }
   .thumb-diagram { background: #fff; }
-  .thumb-render { background: #2e3440; }
+  .thumb-render { background: #2c2c2a; }
   .thumb-diagram img, .thumb-render img { object-fit: contain; padding: 18px; }
-  .card:hover .thumb img, .card:hover .thumb canvas { transform: scale(1.03); }
+  /* Hover is a hard edge and an underline, nothing that eases. */
+  .card:hover .thumb { outline-color: var(--text-primary); }
 
   .meta {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 12px;
-    margin-top: 16px;
+    gap: var(--s3);
+    margin-top: var(--s3);
   }
   .title {
-    font-size: 16px;
-    font-weight: 500;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     color: var(--text-primary);
   }
   .card:hover .title {
     text-decoration: underline;
-    text-decoration-color: var(--border-accent);
+    text-decoration-color: var(--accent);
     text-underline-offset: 4px;
   }
-  .year {
-    color: var(--text-muted);
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-  }
+  .year { color: var(--text-muted); }
   .tagline {
-    margin-top: 4px;
+    margin-top: var(--s1);
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.5;
   }
 
-  @media (max-width: 960px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; gap: 40px; margin-top: 40px; } }
+  @media (max-width: 960px) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid > li, .grid > li:nth-child(-n + 4) { grid-column: span 1; }
+  }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; gap: var(--s7); margin-top: var(--s7); } }
 </style>
 
 <script>

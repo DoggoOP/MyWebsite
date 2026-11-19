@@ -28,7 +28,7 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
     justify-content: space-between;
     height: var(--nav-h);
     padding: 0 28px 0 12px;
-    background: rgba(15, 19, 20, 0.92);
+    background: rgba(13, 13, 12, 0.94);
     border-bottom: 1px solid var(--border-subtle);
   }
 
@@ -64,8 +64,8 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
   }
   .nav-name {
     margin-left: -28px;
-    font-size: 15px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--text-primary);
   }
@@ -78,12 +78,11 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
   .nav-link {
     font-size: 14px;
     color: var(--text-secondary);
-    transition: color 0.2s;
   }
   .nav-link:hover, .nav-link.active { color: var(--text-primary); }
   .nav-link.active {
     text-decoration: underline;
-    text-decoration-color: var(--border-accent);
+    text-decoration-color: var(--accent);
     text-underline-offset: 6px;
   }
 
