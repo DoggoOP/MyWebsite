@@ -1,9 +1,22 @@
 import { FORCE_LIMIT } from './constants';
+import { FILL_ALPHA, LINE_WIDTH_PX } from './colormap';
 import {
-  FULLSCREEN_VS, STEP_FS, FORCE_FS, INIT_FS, SEED_FS, MASK_FS, VORTICITY_FS, RENDER_FS, fragment,
+  FULLSCREEN_VS, STEP_FS, FORCE_FS, INIT_FS, SEED_FS, MASK_FS, VORTICITY_FS, renderFs, fragment,
 } from './shaders';
 
 export type Precision = 'f32' | 'f16';
+
+/** What render() draws: the viewport (CSS px) at a scroll offset, on a canvas of `pixelRatio` device px per CSS px. */
+export type RenderOpts = {
+  scrollX: number;
+  scrollY: number;
+  viewW: number;
+  viewH: number;
+  cell: number;
+  pixelRatio: number;
+  lut: Uint8Array;
+  ref: number;
+};
 
 const clamp = (x: number, lo: number, hi: number) => (x < lo ? lo : x > hi ? hi : x);
 const TWO_PI = 2 * Math.PI;
@@ -61,7 +74,6 @@ export class GpuLbm {
   private readonly solid: Uint8Array;
   private readonly maskBytes: Uint8Array;
   private readonly force: Float32Array;
-  private readonly thresholds = new Float32Array(8);
   private forcePending = false;
   private forceRow0 = Infinity;
   private forceRow1 = -Infinity;
@@ -96,7 +108,10 @@ export class GpuLbm {
     this.pSeed = make(fragment(SEED_FS, f16), state);
     this.pMask = make(fragment(MASK_FS, f16), { ...state, uOldMask: UNIT_AUX });
     this.pVort = make(fragment(VORTICITY_FS, f16), { uC: 2, uMask: UNIT_MASK });
-    this.pRender = make(RENDER_FS, { uVort: UNIT_VORT, uLut: UNIT_AUX });
+    // Float textures filter linearly with OES_texture_float_linear (R16F always does); otherwise
+    // the render shader interpolates by hand.
+    const linear = f16 || !!gl.getExtension('OES_texture_float_linear');
+    this.pRender = make(renderFs(!linear), { uVort: UNIT_VORT, uLut: UNIT_AUX });
 
     this.vao = gl.createVertexArray()!;
     const stateFormat = f16 ? gl.RGBA16F : gl.RGBA32F;
@@ -108,6 +123,10 @@ export class GpuLbm {
     this.forceTex = this.texture(gl.RG32F, cols, rows);
     this.lutTex = this.texture(gl.RGBA8, LUT_ENTRIES, 1);
     this.vortTex = this.texture(f16 ? gl.R16F : gl.R32F, cols, rows);
+    if (linear) {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    }
     this.vortFbo = this.framebuffer([this.vortTex]);
 
     gl.disable(gl.BLEND);
@@ -206,12 +225,16 @@ export class GpuLbm {
     return out;
   }
 
-  /** Draws vorticity rows topRow..topRow+viewRows over the whole canvas, banded through the LUT. */
-  render(opts: { topRow: number; viewRows: number; lut: Uint8Array; ref: number }): void {
+  /**
+   * Draws the viewport's vorticity as banded contours over the whole drawing buffer: faint band
+   * fills and antialiased band-edge lines LINE_WIDTH_PX CSS px wide (see renderFs).
+   */
+  render(opts: RenderOpts): void {
     const { gl, cols, rows } = this;
-    const { topRow, viewRows, lut, ref } = opts;
-    const first = clamp(Math.floor(topRow), 0, rows - 1);
-    const last = clamp(Math.ceil(topRow + viewRows), first, rows - 1);
+    const { scrollX, scrollY, viewW, viewH, cell, pixelRatio, lut, ref } = opts;
+    // One spare row each side for the bilinear footprint.
+    const first = clamp(Math.floor(scrollY / cell) - 1, 0, rows - 1);
+    const last = clamp(Math.ceil((scrollY + viewH) / cell) + 1, first, rows - 1);
     this.vorticityPass(this.vortFbo, first, last - first + 1);
 
     gl.bindTexture(gl.TEXTURE_2D, this.lutTex);
@@ -228,12 +251,12 @@ export class GpuLbm {
     this.bind(UNIT_AUX, this.lutTex);
     gl.uniform2i(p.loc('uSize'), cols, rows);
     gl.uniform2f(p.loc('uCanvas'), w, h);
-    gl.uniform1f(p.loc('uTop'), topRow);
-    gl.uniform1f(p.loc('uViewRows'), viewRows);
+    gl.uniform2f(p.loc('uView'), viewW, viewH);
+    gl.uniform2f(p.loc('uScroll'), scrollX, scrollY);
+    gl.uniform1f(p.loc('uCell'), cell);
     gl.uniform1f(p.loc('uRef'), ref);
-    const thr = this.thresholds;
-    for (let k = 0; k < 8; k++) thr[k] = ref * 0.08 * Math.pow(1.45, k);
-    gl.uniform1fv(p.loc('uThr'), thr);
+    gl.uniform1f(p.loc('uHalfLine'), (LINE_WIDTH_PX * pixelRatio) / 2);
+    gl.uniform1f(p.loc('uFillAlpha'), FILL_ALPHA);
     this.draw();
   }
 

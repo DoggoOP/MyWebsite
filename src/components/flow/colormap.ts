@@ -1,6 +1,11 @@
 export const LEVELS = 8;
 
 export type Theme = 'light' | 'dark';
+
+/** Fill opacity inside a band (|band| >= 1); the band-edge lines carry the LUT colour at its own alpha. */
+export const FILL_ALPHA = 0.1;
+/** Band-edge line width in CSS px. */
+export const LINE_WIDTH_PX = 1.25;
 export type Rgba = [number, number, number, number];
 
 /** Signed band index in -LEVELS..LEVELS; 0 sits below the first threshold. */
@@ -37,10 +42,10 @@ export function bandColor(band: number, theme: Theme): Rgba {
   const hue = band > 0 ? 120 - 125 * t : 120 + 160 * t;
   const lightness = theme === 'light' ? 48 - 20 * t * t : 58 - 14 * t * t;
   const [r, g, b] = hslToRgb(hue, 0.85, lightness / 100);
-  return [r, g, b, 150 + 13 * Math.abs(band)];
+  return [r, g, b, 210 + 5 * Math.abs(band)];
 }
 
-/** 2 * LEVELS + 1 RGBA entries; index = band + LEVELS. */
+/** 2 * LEVELS + 1 RGBA entries (band-edge line colours); index = band + LEVELS. */
 export function buildLut(theme: Theme): Uint8Array {
   const lut = new Uint8Array((2 * LEVELS + 1) * 4);
   for (let band = -LEVELS; band <= LEVELS; band++) {

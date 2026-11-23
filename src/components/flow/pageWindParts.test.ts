@@ -2,7 +2,7 @@
 import { test, expect } from 'vitest';
 import { canStir, dragForce, sailsToPage, viewWindow, readRef, buildMask } from './pageWindParts';
 import { paintBands } from './cpuRender';
-import { buildLut, LEVELS } from './colormap';
+import { buildLut, FILL_ALPHA, LEVELS } from './colormap';
 
 test('only mouse or pen drags that start off controls stir the air', () => {
   document.body.innerHTML = `
@@ -75,7 +75,10 @@ test('paintBands colours visible rows through the LUT and clamps past the last r
   const out = new Uint8ClampedArray(cols * 3 * 4);
   paintBands(vort, cols, rows, 1, 3, lut, 0.02, out);
   const px = (i: number) => Array.from(out.slice(4 * i, 4 * i + 4));
-  const entry = (band: number) => Array.from(lut.slice(4 * (band + LEVELS), 4 * (band + LEVELS) + 4));
+  const entry = (band: number) => {
+    const [r, g, b, a] = Array.from(lut.slice(4 * (band + LEVELS), 4 * (band + LEVELS) + 4));
+    return [r, g, b, a ? Math.round(FILL_ALPHA * 255) : 0];
+  };
   expect(px(0)).toEqual(entry(0)); // row 1 col 0: w = 0
   expect(px(1)).toEqual(entry(-LEVELS)); // row 1 col 1: strong negative
   expect(px(2)).toEqual(entry(LEVELS)); // row 2 col 0

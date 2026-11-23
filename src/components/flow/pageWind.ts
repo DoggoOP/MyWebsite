@@ -2,7 +2,7 @@ import { SAIL_VIEWBOX, sailPolylines, type Pt } from '../../lib/sails';
 import { pickBackend, type Backend } from './backend';
 import { buildLut } from './colormap';
 import { createCpuPainter } from './cpuRender';
-import { GpuLbm } from './gpuLbm';
+import { GpuLbm, type RenderOpts } from './gpuLbm';
 import { gridSize, toCell, type Grid } from './grid';
 import { CpuLbm } from './lbmCpu';
 import { solidCentroids } from './mask';
@@ -20,7 +20,7 @@ export type SolverLike = {
   addForce(col: number, row: number, fx: number, fy: number, radiusCells: number): void;
   step(n: number): void;
   vorticity?(): Float32Array;
-  render?(opts: { topRow: number; viewRows: number; lut: Uint8Array; ref: number }): void;
+  render?(opts: RenderOpts): void;
   dispose?(): void;
 };
 
@@ -48,6 +48,8 @@ const FROZEN_STEPS = 200;
 const CPU_BUDGET = 40_000;
 const CPU_MAX_TEXTURE = 1 << 15;
 const STAT_FRAMES = 120;
+/** The GPU draws contour lines at viewport resolution, capped at this many device px per CSS px. */
+const MAX_PIXEL_RATIO = 1.5;
 const GL_ATTRS: WebGLContextAttributes = {
   premultipliedAlpha: false, alpha: true, antialias: false, depth: false, stencil: false,
 };
@@ -159,25 +161,42 @@ export function startPageWind(opts: PageWindOptions): () => void {
 
   function draw() {
     if (!solver || lost) return;
-    const { topRow, viewRows, offsetPx } = viewWindow(scrollY, innerHeight, grid.cell);
-    if (canvas.width !== grid.cols || canvas.height !== viewRows) {
-      canvas.width = grid.cols;
-      canvas.height = viewRows;
+    if (backend === 'cpu') {
+      // Lattice-resolution fills, scaled up by CSS and shifted by the sub-cell scroll remainder.
+      const { topRow, viewRows, offsetPx } = viewWindow(scrollY, innerHeight, grid.cell);
+      if (canvas.width !== grid.cols || canvas.height !== viewRows) {
+        canvas.width = grid.cols;
+        canvas.height = viewRows;
+      }
+      const key = `cpu|${grid.cols * grid.cell}|${viewRows * grid.cell}|${scrollX}|${offsetPx}`;
+      if (key !== styleKey) {
+        styleKey = key;
+        const s = canvas.style;
+        s.width = `${grid.cols * grid.cell}px`;
+        s.height = `${viewRows * grid.cell}px`;
+        s.transformOrigin = '0 0';
+        s.transform = `translate(${-scrollX}px, ${-offsetPx}px)`;
+      }
+      if (painter && solver.vorticity) painter.draw(solver.vorticity(), grid.cols, grid.rows, topRow, viewRows, lut, ref);
+      return;
     }
-    const key = `${grid.cols * grid.cell}|${viewRows * grid.cell}|${scrollX}|${offsetPx}`;
+    // GPU: a viewport-sized canvas; the shader maps each pixel to page space, scroll included.
+    const viewW = document.documentElement.clientWidth || innerWidth, viewH = innerHeight;
+    const ratio = Math.min(devicePixelRatio || 1, MAX_PIXEL_RATIO);
+    const bw = Math.max(1, Math.round(viewW * ratio)), bh = Math.max(1, Math.round(viewH * ratio));
+    if (canvas.width !== bw || canvas.height !== bh) {
+      canvas.width = bw;
+      canvas.height = bh;
+    }
+    const key = `gpu|${viewW}|${viewH}`;
     if (key !== styleKey) {
       styleKey = key;
       const s = canvas.style;
-      s.width = `${grid.cols * grid.cell}px`;
-      s.height = `${viewRows * grid.cell}px`;
-      s.transformOrigin = '0 0';
-      s.transform = `translate(${-scrollX}px, ${-offsetPx}px)`;
+      s.width = `${viewW}px`;
+      s.height = `${viewH}px`;
+      s.transform = '';
     }
-    if (backend === 'cpu') {
-      if (painter && solver.vorticity) painter.draw(solver.vorticity(), grid.cols, grid.rows, topRow, viewRows, lut, ref);
-    } else {
-      solver.render?.({ topRow, viewRows, lut, ref });
-    }
+    solver.render?.({ scrollX, scrollY, viewW, viewH, cell: grid.cell, pixelRatio: bw / viewW, lut, ref });
   }
 
   const canRun = () => !stopped && !paused && !lost && !!solver && document.visibilityState !== 'hidden';

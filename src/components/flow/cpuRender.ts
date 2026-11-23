@@ -1,9 +1,11 @@
-import { bandOf, LEVELS } from './colormap';
+import { bandOf, FILL_ALPHA, LEVELS } from './colormap';
+
+const FILL_A = Math.round(FILL_ALPHA * 255);
 
 /**
  * Writes RGBA for rows topRow..topRow+viewRows-1 of a cols-wide vorticity field into `out`,
- * one pixel per cell, banded through `lut` (index band + LEVELS). Rows past the grid repeat
- * the last row, as GpuLbm.render does.
+ * one pixel per cell, as a faint fill in the band's `lut` colour (index band + LEVELS) with no
+ * band-edge lines. Rows past the grid repeat the last row.
  */
 export function paintBands(
   vort: Float32Array, cols: number, rows: number, topRow: number, viewRows: number,
@@ -14,7 +16,7 @@ export function paintBands(
     const dst = r * cols * 4;
     for (let c = 0; c < cols; c++) {
       const k = (bandOf(vort[src + c], ref) + LEVELS) * 4, o = dst + c * 4;
-      out[o] = lut[k]; out[o + 1] = lut[k + 1]; out[o + 2] = lut[k + 2]; out[o + 3] = lut[k + 3];
+      out[o] = lut[k]; out[o + 1] = lut[k + 1]; out[o + 2] = lut[k + 2]; out[o + 3] = lut[k + 3] ? FILL_A : 0;
     }
   }
 }

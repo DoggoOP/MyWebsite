@@ -279,39 +279,74 @@ void main() {
 `;
 
 /**
- * Draws vorticity rows uTop..uTop+uViewRows over the whole viewport, banded as
- * colormap.bandOf does (uThr[k] = ref*0.08*1.45^k) and colored from the 17x1 LUT.
+ * Draws the vorticity field for the viewport at screen resolution as banded contours: a faint
+ * fill (uFillAlpha) inside each band and an antialiased line at every band edge, where |w|
+ * crosses ref*0.08*1.45^k as in colormap.bandOf. The field is sampled bilinearly in page space
+ * (cell i's centre sits at (i + 0.5) * uCell CSS px), so the scroll offset needs no CSS shift.
+ * `manualBilinear` replaces hardware LINEAR filtering for float textures without
+ * OES_texture_float_linear.
  */
-export const RENDER_FS = `#version 300 es
+export function renderFs(manualBilinear: boolean): string {
+  return `#version 300 es
 precision highp float;
 precision highp int;
 precision highp sampler2D;
+${manualBilinear ? '#define MANUAL_BILINEAR 1' : ''}
 uniform sampler2D uVort;
 uniform sampler2D uLut;
 uniform ivec2 uSize;
 uniform vec2 uCanvas;
-uniform float uTop;
-uniform float uViewRows;
+uniform vec2 uView;
+uniform vec2 uScroll;
+uniform float uCell;
 uniform float uRef;
-uniform float uThr[8];
+uniform float uHalfLine;
+uniform float uFillAlpha;
 out vec4 oColor;
 
+float vorticityAt(vec2 cellPos) {
+#ifdef MANUAL_BILINEAR
+  vec2 p = cellPos - 0.5;
+  vec2 f = fract(p);
+  ivec2 i = ivec2(floor(p));
+  ivec2 m = uSize - 1;
+  float a = texelFetch(uVort, clamp(i, ivec2(0), m), 0).r;
+  float b = texelFetch(uVort, clamp(i + ivec2(1, 0), ivec2(0), m), 0).r;
+  float c = texelFetch(uVort, clamp(i + ivec2(0, 1), ivec2(0), m), 0).r;
+  float d = texelFetch(uVort, clamp(i + ivec2(1, 1), ivec2(0), m), 0).r;
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+#else
+  return texture(uVort, cellPos / vec2(uSize)).r;
+#endif
+}
+
 void main() {
-  vec2 uv = gl_FragCoord.xy / uCanvas;
-  int col = clamp(int(floor(uv.x * float(uSize.x))), 0, uSize.x - 1);
-  int row = clamp(int(floor(uTop + (1.0 - uv.y) * uViewRows)), 0, uSize.y - 1);
-  float w = texelFetch(uVort, ivec2(col, row), 0).r;
-  int band = 0;
-  if (uRef > 0.0 && w != 0.0) {
-    float a = abs(w);
-    for (int k = 0; k < 8; k++) {
-      if (a >= uThr[k]) band = k + 1; else break;
-    }
-    if (w < 0.0) band = -band;
+  vec2 css = vec2(gl_FragCoord.x, uCanvas.y - gl_FragCoord.y) / uCanvas * uView + uScroll;
+  float w = vorticityAt(css / uCell);
+  // Continuous band coordinate: b >= k + 1 exactly where |w| >= ref * 0.08 * 1.45^k.
+  float b = log(max(abs(w), 1e-30) / max(uRef * 0.08, 1e-30)) / log(1.45) + 1.0;
+  float fw = max(fwidth(b), 1e-6);
+  if (!(uRef > 0.0)) { oColor = vec4(0.0); return; }
+  int s = w < 0.0 ? -1 : 1;
+  int band = int(clamp(floor(b), 0.0, 8.0));
+  vec4 fill = band > 0 ? vec4(texelFetch(uLut, ivec2(s * band + 8, 0), 0).rgb, uFillAlpha) : vec4(0.0);
+  float n = floor(b + 0.5);
+  vec3 lineRgb = vec3(0.0);
+  float lineA = 0.0;
+  if (n >= 1.0 && n <= 8.0) {
+    float d = abs(b - n) / fw;
+    float cover = 1.0 - smoothstep(uHalfLine - 0.5, uHalfLine + 0.5, d);
+    vec4 lc = texelFetch(uLut, ivec2(s * int(n) + 8, 0), 0);
+    lineRgb = lc.rgb;
+    lineA = lc.a * cover;
   }
-  oColor = texelFetch(uLut, ivec2(band + 8, 0), 0);
+  // Line over fill, composited here because the canvas is not premultiplied and blending is off.
+  float a = lineA + fill.a * (1.0 - lineA);
+  vec3 rgb = lineRgb * lineA + fill.rgb * fill.a * (1.0 - lineA);
+  oColor = a > 0.0 ? vec4(rgb / a, a) : vec4(0.0);
 }
 `;
+}
 
 /** Prefixes a fragment body with the version line, precision and the F16 switch. */
 export function fragment(body: string, f16: boolean): string {

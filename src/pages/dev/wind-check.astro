@@ -82,7 +82,7 @@
         const pixel = new Uint8Array(4);
         const lut = buildLut('light');
         const sync = () => {
-          bench.render({ topRow: 0, viewRows: 1, lut, ref: 1 });
+          bench.render({ scrollX: 0, scrollY: 0, viewW: 1, viewH: 1, cell: 1, pixelRatio: 1, lut, ref: 1 });
           gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
         };
         bench.step(20);
@@ -94,7 +94,7 @@
         bench.dispose();
         show(`steps/sec=${Math.round(2000 / seconds)} grid=290x920 steps=2000 ${precision}`);
 
-        gpu.render({ topRow: 0, viewRows: ROWS, lut, ref: peak });
+        gpu.render({ scrollX: 0, scrollY: 0, viewW: COLS, viewH: ROWS, cell: 1, pixelRatio: 3, lut, ref: peak });
       }
 
       try {
