@@ -77,7 +77,13 @@ export function startNavFlow(canvas: HTMLCanvasElement): () => void {
     }
     f.set(next);
   }
+  const scheme = window.matchMedia('(prefers-color-scheme: dark)');
+  const streaks = {
+    dark: { copper: 'rgba(223,171,130,.58)', steel: 'rgba(135,181,193,.58)' },
+    light: { copper: 'rgba(194,104,58,.6)', steel: 'rgba(61,111,140,.6)' },
+  };
   function draw() {
+    const streak = scheme.matches ? streaks.dark : streaks.light;
     const data = image.data;
     for (let y = 0; y < VIEW_H; y++) for (let x = 0; x < VIEW_W; x++) {
       const simX = x + VIEW_X;
@@ -103,7 +109,7 @@ export function startNavFlow(canvas: HTMLCanvasElement): () => void {
       const up = ((Math.floor(particle.y) + H - 1) % H) * W + Math.floor(particle.x);
       const down = ((Math.floor(particle.y) + 1) % H) * W + Math.floor(particle.x);
       const curl = (uy[p + 1] - uy[p - 1] - ux[down] + ux[up]) * 0.5;
-      ctx!.strokeStyle = curl >= 0 ? 'rgba(223,171,130,.58)' : 'rgba(135,181,193,.58)';
+      ctx!.strokeStyle = curl >= 0 ? streak.copper : streak.steel;
       ctx!.beginPath();
       ctx!.moveTo(particle.px - VIEW_X, particle.py - VIEW_Y);
       ctx!.lineTo(particle.x - VIEW_X, particle.y - VIEW_Y);

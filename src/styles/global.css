@@ -1,17 +1,29 @@
 /* Neutral ink and paper. The only colours are the sim's two vorticity signs,
    copper and steel blue, so the UI and the wind tunnel read as one palette. */
 :root {
-  --bg-base: #0d0d0c;
-  --bg-surface: #141413;
-  --bg-card: #1b1b1a;
-  --accent: #d4956b;      /* sim copper, positive vorticity */
-  --accent-cool: #7fa2b4; /* sim steel blue, negative vorticity */
-  --accent-cyan: var(--accent-cool); /* used by the sim UI */
-  --text-primary: #f1f0eb;
-  --text-secondary: #c6c5bd;
-  --text-muted: #908f88;
-  --border-subtle: #2a2a28;
-  --border-accent: #6a6862;
+  color-scheme: light dark;
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --ink: #161614;
+  --ink2: #3b3a36;
+  --muted: #66655f;
+  --rule: #d9d6cc;
+  --scanbg: #e9e6de;
+  --copper: #c2683a;
+  --steel: #3d6f8c;
+
+  /* Old token names stay as aliases until the last page stops using them. */
+  --bg-base: var(--bg);
+  --bg-surface: var(--surface);
+  --bg-card: var(--scanbg);
+  --accent: var(--copper);
+  --accent-cool: var(--steel);
+  --accent-cyan: var(--steel);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink2);
+  --text-muted: var(--muted);
+  --border-subtle: var(--rule);
+  --border-accent: var(--muted);
   --radius-card: 0;
   --radius-btn: 0;
   --font-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
@@ -23,6 +35,18 @@
   --s6: 32px; --s7: 48px; --s8: 64px; --s9: 96px;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d0d0c;
+    --surface: #141413;
+    --ink: #f1f0eb;
+    --ink2: #c6c5bd;
+    --muted: #908f88;
+    --rule: #2a2a28;
+    --scanbg: #1b1b1a;
+  }
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -31,15 +55,15 @@
 
 html, body {
   min-height: 100%;
-  background: var(--bg-base);
-  color: var(--text-primary);
+  background: var(--bg);
+  color: var(--ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   overflow-x: clip;
 }
 body { min-height: 100vh; }
 
-::selection { background: #d4956b55; }
+::selection { background: color-mix(in srgb, var(--copper) 33%, transparent); }
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-base); }

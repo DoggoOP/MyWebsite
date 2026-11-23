@@ -1,4 +1,6 @@
 ---
+interface Props { pauseAir?: boolean }
+const { pauseAir = false } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
 ---
@@ -12,8 +14,10 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
     <span class="nav-name">Ethan Kong</span>
   </a>
   <div class="nav-links">
+    {pauseAir && <button type="button" class="pause-air" data-pause-air aria-pressed="false">Pause air</button>}
+    <a href="/#projects" class="nav-link">Projects</a>
+    <a href="/#classes" class="nav-link">Classes</a>
     <a href="/about" class:list={['nav-link', { active: isActive('/about') }]}>About</a>
-    <a href="/projects" class:list={['nav-link', { active: isActive('/projects') }]}>Projects</a>
     <a href="/assets/resume.pdf" class="nav-link" target="_blank" rel="noopener">Resume</a>
   </div>
 </nav>
@@ -28,7 +32,8 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
     justify-content: space-between;
     height: var(--nav-h);
     padding: 0 28px 0 12px;
-    background: rgba(13, 13, 12, 0.94);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(6px);
     border-bottom: 1px solid var(--border-subtle);
   }
 
@@ -79,6 +84,14 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
     font-size: 14px;
     color: var(--text-secondary);
   }
+  .pause-air {
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .pause-air:hover, .pause-air[aria-pressed="true"] { color: var(--ink); }
   .nav-link:hover, .nav-link.active { color: var(--text-primary); }
   .nav-link.active {
     text-decoration: underline;
@@ -89,7 +102,8 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
   @media (max-width: 600px) {
     .nav { padding: 0 18px 0 4px; }
     .nav-name { display: none; }
-    .nav-links { gap: 20px; }
+    .nav-links { gap: 14px; }
+    .nav-link, .pause-air { font-size: 13px; }
   }
 </style>
 

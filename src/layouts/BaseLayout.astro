@@ -8,13 +8,15 @@ interface Props {
   description?: string;
   math?: boolean;
   noNav?: boolean;
+  pauseAir?: boolean;
 }
 
 const {
   title = 'Ethan Kong',
   description = 'Ethan Kong studies aerospace engineering at Stanford and builds across physics, hardware and software.',
   math = false,
-  noNav = false
+  noNav = false,
+  pauseAir = false
 } = Astro.props;
 ---
 
@@ -31,12 +33,12 @@ const {
     <link rel="alternate" type="text/markdown" href="/llms.txt" title="llms.txt" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=Caveat:wght@500;600&display=swap" />
     {math && <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />}
     <ViewTransitions />
   </head>
   <body>
-    {!noNav && <Nav />}
+    {!noNav && <Nav pauseAir={pauseAir} />}
     <slot />
     <script>import '../scripts/webmcp';</script>
   </body>
