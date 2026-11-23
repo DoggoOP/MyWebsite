@@ -34,3 +34,11 @@ test('bad sizes give a 1x1 grid', () => {
     expect(g.rows).toBeGreaterThanOrEqual(1);
   }
 });
+
+test('a budget override caps the cells for the CPU fallback', () => {
+  const g = gridSize(1440, 4600, { phone: false, maxTexture: 16384, budget: 40_000 });
+  expect(g.cols * g.rows).toBeLessThanOrEqual(40_000);
+  expect(g.cell).toBeGreaterThan(5);
+  expect(g.cols * g.cell).toBeGreaterThanOrEqual(1440);
+  expect(g.rows * g.cell).toBeGreaterThanOrEqual(4600);
+});

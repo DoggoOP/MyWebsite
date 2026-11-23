@@ -5,14 +5,17 @@ const STEP = 0.25;
 const BUDGET_DESKTOP = 300_000;
 const BUDGET_PHONE = 150_000;
 
-/** Pick a lattice for a page: 5 CSS px cells, grown until the cell budget and texture limit fit. */
+/**
+ * Pick a lattice for a page: 5 CSS px cells, grown until the cell budget and texture limit fit.
+ * `budget` overrides the desktop and phone budgets (the CPU fallback passes a smaller one).
+ */
 export function gridSize(
-  pageW: number, pageH: number, opts: { phone: boolean; maxTexture: number },
+  pageW: number, pageH: number, opts: { phone: boolean; maxTexture: number; budget?: number },
 ): Grid {
   if (!(pageW > 0) || !(pageH > 0) || !Number.isFinite(pageW) || !Number.isFinite(pageH)) {
     return { cell: START_CELL, cols: 1, rows: 1 };
   }
-  const budget = opts.phone ? BUDGET_PHONE : BUDGET_DESKTOP;
+  const budget = opts.budget ?? (opts.phone ? BUDGET_PHONE : BUDGET_DESKTOP);
   const maxTex = Math.max(1, opts.maxTexture);
   let cell = START_CELL;
   for (;;) {
