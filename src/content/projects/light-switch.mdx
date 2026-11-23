@@ -1,11 +1,11 @@
 ---
 title: Automated Light Switch
-description: A motorized retrofit that flips an existing wall switch with a lead-screw actuator and an ESP32, with no rewiring. I still use the switch every day.
+description: A motorized retrofit that flips an existing wall switch with a lead-screw actuator and an ESP32, with no rewiring. I turn the lights on and off from a button on the wall or a website on my phone, and I still use the switch every day.
 tagline: Lead-screw actuation for an existing wall switch
 coverImage: /assets/light-switch-leadscrew-cad.png
 animation: light-switch
 date: "2022-12-01"
-tags: [hardware, embedded, 3d-printing, esp32, cad]
+tags: [hardware, embedded, 3d-printing, esp32, wifi, cad]
 order: 10
 ---
 
@@ -20,11 +20,11 @@ I wanted automated lights without touching the building wiring, so the device wo
 
 ## Control
 
-An **ESP32** drives the motor and reads a push button mounted beside the switch.
+An **ESP32** drives the motor and gives me two ways to flip the lights. A **push button** beside the switch works like the original switch. The ESP32 also connects to Wi-Fi, so I can turn the lights on and off from a **website on my phone**.
 
 <figure>
   <img src="/assets/light-switch-prototype.jpg" alt="Wall-mounted light-switch actuator wired to an ESP32 and push button" loading="lazy" />
-  <figcaption>The actuator mounted beside the switch, with the ESP32 and push button.</figcaption>
+  <figcaption>The actuator beside the switch, with the ESP32 and push button.</figcaption>
 </figure>
 
 The switch has run reliably since I finished the build, and I use the switch every day.

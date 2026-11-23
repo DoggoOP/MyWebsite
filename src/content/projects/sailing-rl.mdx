@@ -1,6 +1,6 @@
 ---
 title: Sailing Reinforcement Learning
-description: Lattice-Boltzmann CFD across 12,000 wind/sail/angle cases feeding a deep RL policy trained to find time-optimal tacking routes under stochastic wind fields.
+description: Lattice-Boltzmann CFD across 12,000 wind/sail/angle cases feeding a deep RL policy that learns time-optimal tacking routes under stochastic wind fields.
 tagline: CFD-grounded autonomous sailing
 coverImage: /assets/LBMSail.png
 coverStyle: diagram
@@ -23,7 +23,7 @@ The pipeline has three stages:
 
 1. A Lattice Boltzmann wind tunnel in Wolfram Mathematica computes lift coefficients for a two-sail rig (mainsail + jib) across combinations of wind speed (5–20 knots), boat angle (37.5°–52.5° off the wind), and sail angle (0°–15°)
 2. A PPO agent navigates a 1000×1000 grid with a spatially varying wind field, using the precomputed lift data to determine boat speed at each heading
-3. The trained agent's path is animated over the wind vector field in real time
+3. An animation draws the trained agent's path over the wind vector field in real time
 
 ## Aerodynamics Simulation
 
@@ -31,24 +31,24 @@ The pipeline has three stages:
   <img src="/assets/LBMSail.png" style="width: 100%; display: block;" />
 </div>
 
-Sail shapes are defined using Bézier curves with manually tuned control points, constrained to match real-world arc lengths:
+I defined the sail shapes with Bézier curves and tuned the control points by hand to match the real sails' arc lengths:
 
 | Sail | Arc Length | Chord |
 |------|-----------|-------|
 | Jib | ~169 cm | 163 cm |
 | Mainsail | ~199.5 cm | 194 cm |
 
-The Lattice Boltzmann wind tunnel runs both sails simultaneously. At each time step, 8 particles per grid point advect in their respective directions; collisions trigger velocity redistribution. Vorticity fields reveal the pressure differential across each sail, and lift coefficients are extracted at the center of effort of each sail. Total lift is computed as:
+The Lattice Boltzmann wind tunnel runs both sails simultaneously. At each time step, 8 particles per grid point advect in their respective directions; collisions trigger velocity redistribution. Vorticity fields reveal the pressure differential across each sail, and the simulation extracts lift coefficients at the center of effort of each sail. Total lift is:
 
 $$L = C_{l,\text{main}} \cdot A_{\text{main}} \cdot \tfrac{1}{2} \rho v^2 + C_{l,\text{jib}} \cdot A_{\text{jib}} \cdot \tfrac{1}{2} \rho v^2$$
 
-where $\rho = 712$ (air density used in simulation), $A_{\text{main}} = 8.673\;\text{m}^2$, $A_{\text{jib}} = 3.738\;\text{m}^2$.
+where $\rho = 712$ (the air density the simulation uses), $A_{\text{main}} = 8.673\;\text{m}^2$, $A_{\text{jib}} = 3.738\;\text{m}^2$.
 
-Simulations were run for every combination of wind speed, boat angle, and sail angle, parallelized across kernels. The sail angle giving maximum lift was retained for each (wind speed, boat angle) pair, and in almost every case the best sail angle was 0°.
+I ran simulations for every combination of wind speed, boat angle, and sail angle in parallel across kernels, and kept the sail angle with maximum lift for each (wind speed, boat angle) pair, and in almost every case the best sail angle was 0°.
 
 ## Reinforcement Learning Environment
 
-A custom OpenAI Gym environment built on the 1000×1000 coordinate grid. The agent starts and ends at random positions, with a discrete action space of 7 boat angles (37.5°–52.5° off wind) plus a tack action. Wind varies spatially: base speed ranges from 7–18 knots with ±3 knot variation per cell, and direction shifts ±20° per cell.
+I built a custom OpenAI Gym environment on the 1000×1000 coordinate grid. The agent starts and ends at random positions, with a discrete action space of 7 boat angles (37.5°–52.5° off wind) plus a tack action. Wind varies spatially: base speed ranges from 7–18 knots with ±3 knot variation per cell, and direction shifts ±20° per cell.
 
 The observation space is 252-dimensional, encoding:
 - Current position, wind speed and direction, angle to goal, distance to goal
@@ -77,4 +77,4 @@ The trained agent sails upwind in the zigzag a racer would sail: out on the lift
 
 ## Next steps
 
-The sails are rigid Bézier shapes fitted to measured arc lengths, the wind field is synthetic, and the model covers upwind legs only. Next I would add a vang parameter for mainsail twist, a downwind leg with a spinnaker, real race-day wind for post-race route analysis, higher-resolution LBM runs in the cloud, and a full course with multiple marks.
+The sails are rigid Bézier shapes that I fit to measured arc lengths, the wind field is synthetic, and the model covers upwind legs only. Next I would add a vang parameter for mainsail twist, a downwind leg with a spinnaker, real race-day wind for post-race route analysis, higher-resolution LBM runs in the cloud, and a full course with multiple marks.

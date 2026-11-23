@@ -16,11 +16,11 @@ The bot trades Polymarket prediction markets without supervision, focusing on ti
 
 Most of the work went into catching the bot doing something other than what I thought, usually while looking profitable in a backtest, and then writing a constraint so the same mistake could not happen again. The architecture below is what survived.
 
-The system is built around four loosely coupled stages, each independently testable and replaceable:
+I built the system around four loosely coupled stages, each independently testable and replaceable:
 
 1. **Data collection.** Multi-source polling with fallback chains.
 2. **Forecasting.** An ensemble model that maps observed history to a probability distribution over market outcomes.
-3. **Edge calculation.** Model probabilities compared against live CLOB prices, with spread modeled.
+3. **Edge calculation.** The engine compares model probabilities against live CLOB prices and models the spread.
 4. **Execution.** Kelly-sized orders through the Polymarket CLOB API, with a risk cap on every bracket.
 
 ## Live Dashboard
@@ -31,15 +31,15 @@ The public performance dashboard at the top of this page shows bot health, equit
 
 ## Data Collection
 
-The ingestion layer pulls from multiple sources with fallback chains to handle API outages and rate limits. Raw observations are normalized against a time-of-day-aware baseline so the model always operates on comparable, regime-adjusted quantities across different markets and time windows.
+The ingestion layer pulls from multiple sources with fallback chains to handle API outages and rate limits. The layer normalizes raw observations against a time-of-day-aware baseline so the model always operates on comparable, regime-adjusted quantities across different markets and time windows.
 
-A scheduler polls every 30 seconds and persists everything to SQLite in WAL mode so the dashboard can read concurrently without blocking the trading loop. New markets are auto-discovered hourly through the Polymarket API, with each market's measurement window parsed from the market title. The trading window and the resolution window are often different intervals, so the parser matters.
+A scheduler polls every 30 seconds and persists everything to SQLite in WAL mode so the dashboard can read concurrently without blocking the trading loop. The bot discovers new markets hourly through the Polymarket API and parses each market's measurement window from the market title. The trading window and the resolution window are often different intervals, so the parser matters.
 
 ## Forecasting
 
-The forecast layer is an ensemble: multiple independent signals each produce a projection from observed history, and a learned set of weights blends them into a single distribution over final outcomes. Sigma is fit empirically rather than assumed, and the resulting distribution is mapped onto market brackets via a truncated Normal CDF.
+The forecast layer is an ensemble: multiple independent signals each produce a projection from observed history, and a learned set of weights blends them into a single distribution over final outcomes. The layer fits sigma empirically instead of assuming a value, and maps the resulting distribution onto market brackets with a truncated Normal CDF.
 
-Markets with different resolution horizons behave differently, so the ensemble runs a separate parameter set for each market type, found by the optimizer. A pre-market warm-start uses the last 48 hours of underlying activity to initialize the ensemble before a market opens for trading, so the first prediction the bot makes is already informed.
+Markets with different resolution horizons behave differently, so the ensemble runs a separate parameter set for each market type, which the optimizer finds. A pre-market warm-start uses the last 48 hours of underlying activity to initialize the ensemble before a market opens for trading, so the bot's first prediction already draws on recent data.
 
 ## Edge & Execution
 
@@ -47,7 +47,7 @@ The trading engine compares the model's bracket probabilities against live order
 
 $$\text{edge} = p_{\text{model}} - p_{\text{market}} - \tfrac{1}{2}\,\text{spread}$$
 
-Brackets with positive edge are bought, sized by a fractional Kelly rule with a per-bracket hard cap so no single position can dominate the portfolio. The engine exits when the model's forecast flips, with trend-aware filters to avoid cutting winners on temporary price moves and a phase-dependent threshold that lets borderline positions ride to resolution rather than churning on noise near bracket boundaries.
+The engine buys brackets with positive edge and sizes each position with a fractional Kelly rule and a per-bracket hard cap so no single position can dominate the portfolio. The engine exits when the model's forecast flips, with trend-aware filters to avoid cutting winners on temporary price moves and a phase-dependent threshold that lets borderline positions ride to resolution rather than churning on noise near bracket boundaries.
 
 Orders route through the Polymarket CLOB API. A paper-trading ledger mirrors the live execution path, so strategy changes run end-to-end before real money goes in. Paper and live mode differ only in which broker the engine talks to.
 
@@ -63,7 +63,7 @@ I wasn't trying to build a market maker, and the results were extremely sensitiv
 
 ### I thought I had a speed advantage
 
-For a stretch I was convinced the bot had an execution-speed edge, and that polling faster and filling ahead of the market consensus was real alpha. I cut the loop interval, tightened the order cycle, and ran the faster loop live. The bot lost money consistently.
+For a stretch I believed the bot had an execution-speed edge, and that polling faster and filling ahead of the market consensus was real alpha. I cut the loop interval, tightened the order cycle, and ran the faster loop live. The bot lost money consistently.
 
 The order book on Polymarket is thin and fills are slow. My "speed advantage" was me paying the spread to enter positions slightly before the rest of the market priced them correctly for free. The edge comes from being right about the outcome. I rolled back the polling cadence and the order cycle, and the P&L recovered.
 
@@ -71,9 +71,9 @@ The order book on Polymarket is thin and fills are slow. My "speed advantage" wa
 
 The worst stretch was watching the dashboard show the bot opening positions on brackets where, by my own model, the edge was effectively zero. The minimum-edge threshold had been a tunable parameter, and at some point the optimizer had quietly driven the threshold to zero on the in-sample data, because in the simulator, with perfectly modeled spreads and no real adverse selection, a tiny edge multiplied by Kelly sizing was still net-positive on average.
 
-Live, that is gambling. Model noise puts the bot randomly long on every bracket of every market, churning capital and bleeding money through spread and slippage. I locked the floor: minimum edge can no longer optimize below a hard threshold, the abandonment criterion got tightened so borderline positions get cut early instead of riding noise, and the per-bracket cap got more aggressive so a stupid position that slips through can't grow into a real loss.
+Live, that is gambling. Model noise puts the bot randomly long on every bracket of every market, churning capital and bleeding money through spread and slippage. I locked the floor: minimum edge can no longer optimize below a hard threshold, I tightened the abandonment criterion so the bot cuts borderline positions early instead of riding noise, and I made the per-bracket cap more aggressive so a stupid position that slips through can't grow into a real loss.
 
-All three mistakes share one pattern. The optimizer relentlessly minimizes fitness, and any loophole in the fitness function gets found by the optimizer before I find the loophole myself. Most constraints in this system exist to stop the bot from making money in ways I don't trust.
+All three mistakes share one pattern. The optimizer relentlessly minimizes fitness, and the optimizer finds any loophole in the fitness function before I do. Most constraints in this system exist to stop the bot from making money in ways I don't trust.
 
 ## Backtester & Optimizer
 

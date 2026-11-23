@@ -1,6 +1,6 @@
 ---
 title: Ion Thruster Optimization
-description: Field and particle simulations of gridded ion and Hall effect thrusters in Mathematica, with parameter sweeps over thruster geometry to cut the power needed per unit thrust. Published as a sole-author paper in the Journal of High School Science.
+description: Field and particle simulations of gridded ion and Hall effect thrusters in Mathematica, with parameter sweeps over thruster geometry to cut the power needed per unit thrust. I published the work as a sole-author paper in the Journal of High School Science.
 tagline: Thruster simulation and a peer-reviewed paper
 coverImage: /assets/halltrajplot.png
 coverStyle: diagram
@@ -17,7 +17,7 @@ links:
 
 Electric thrusters reach exhaust speeds that chemical rockets cannot, but they need a large power supply for a small amount of thrust. I wanted to know which geometric parameters of a thruster set that cost, so I built simulations of a gridded ion thruster and a Hall effect thruster and swept their geometry to minimize the power required per newton of thrust.
 
-I did this work at the Wolfram Summer Research Program, mentored by Shenghui Yang, and published the results as the sole author in the Journal of High School Science, volume 8, issue 3 (2024).
+I did this work at the Wolfram Summer Research Program, with Shenghui Yang as my mentor, and published the results as the sole author in the Journal of High School Science, volume 8, issue 3 (2024).
 
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0;">
   <img src="/assets/griddedThruster.png" alt="Diagram of a gridded ion thruster" style="width:100%;" />
@@ -28,7 +28,7 @@ I did this work at the Wolfram Summer Research Program, mentored by Shenghui Yan
 
 ### Geometry and fields
 
-I defined each thruster as implicit regions in Mathematica (anode, screen and accelerator grids, cathode, magnets) with charge densities assigned to each electrode. The gridded thruster starts at 10⁶ C/m³ on the anode, 10⁴ on the screen grid and −10⁵ on the accelerator grid.
+I defined each thruster as implicit regions in Mathematica (anode, screen and accelerator grids, cathode, magnets) and assigned a charge density to each electrode. The gridded thruster starts at 10⁶ C/m³ on the anode, 10⁴ on the screen grid and −10⁵ on the accelerator grid.
 
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0;">
   <img src="/assets/GridRegions.png" alt="Implicit regions defining the gridded ion thruster electrodes" style="width:100%;" />
@@ -45,7 +45,7 @@ $$\mathbf{B}(\mathbf{r}) = \frac{\mu_0}{4\pi} \int_C \frac{I \, d\mathbf{l} \tim
 
 ### Ion trajectories
 
-With both fields in place, I integrated the equations of motion for xenon ions to get each trajectory, the velocity along the trajectory, and the energy gained through the thruster.
+With both fields in place, I integrated the equations of motion for xenon ions to get each trajectory, the velocity along the trajectory, and the energy each ion gains through the thruster.
 
 <figure>
   <img src="/assets/halltrajplot.png" alt="Simulated ion trajectory through the Hall thruster fields" loading="lazy" />
@@ -58,7 +58,7 @@ Exhaust velocity comes from differentiating the interpolated trajectory. Thrust 
 
 $$T = \dot{m} \, v_e \, \eta, \qquad I_{sp} = \frac{T}{\dot{m}\, g_0}$$
 
-Power is the sum of ionization power, the kinetic power given to the ions, and a fixed 150 W electron gun:
+Power is the sum of ionization power, the kinetic power the thruster gives the ions, and a fixed 150 W electron gun:
 
 $$P = P_{ion} + \tfrac{1}{2}\dot{m} v_e^2 + P_{e^-}$$
 
@@ -82,7 +82,7 @@ For reference, NASA's NEXT gridded thruster runs at about 30 kW/N and ESA's PPS-
 
 ## Checking against data
 
-I compared the Hall thruster's simulated ion velocity profile with University of Michigan PEPL data, accessed through the HallThruster.jl package. The simulated exhaust velocity of about 18 km/s landed within 10% of the reference 19.9 km/s.
+I compared the Hall thruster's simulated ion velocity profile with University of Michigan PEPL data, which I accessed through the HallThruster.jl package. The simulated exhaust velocity of about 18 km/s landed within 10% of the reference 19.9 km/s.
 
 ## Next steps
 

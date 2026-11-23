@@ -1,6 +1,6 @@
 ---
 title: Lattice
-description: Multi-camera volumetric capture that rebuilds a scene in metric 3D as the scene moves. We built the first version at TreeHacks 2026, where Lattice was shortlisted for the Grand Prize, and I co-founded Lattice as a company afterward to capture 4D data for robotics.
+description: Multi-camera volumetric capture that rebuilds a scene in metric 3D as the scene moves. We built the first version at TreeHacks 2026, where the judges shortlisted Lattice for the Grand Prize, and I co-founded Lattice as a company afterward to capture 4D data for robotics.
 tagline: Multi-camera 4D capture, from TreeHacks to a startup
 coverImage: /assets/tempo3.png
 animation: lattice
@@ -19,13 +19,13 @@ import PointCloudViewer from '../../components/PointCloudViewer.tsx';
 
 ## What Lattice does
 
-Lattice records a scene from several synchronized, calibrated cameras and rebuilds the scene in metric 3D for every frame. One capture gives multiview and egocentric video, human and object motion, pose, and views from angles no camera occupied, all from the same measured geometry. The capture above was recorded with Lattice. Drag to orbit.
+Lattice records a scene from several synchronized, calibrated cameras and rebuilds the scene in metric 3D for every frame. One capture gives multiview and egocentric video, human and object motion, pose, and views from angles no camera occupied, all from the same measured geometry. We recorded the capture above with Lattice. Drag to orbit.
 
 I co-founded Lattice with Anton and Yair after TreeHacks. The hackathon build streamed live 3D to a HoloLens. The company now builds capture rigs that record people doing physical work, so robotics teams can train on real motion with correct 3D geometry.
 
 ## The TreeHacks build
 
-Three Kinect v2 sensors each fed a client laptop, because the Kinect SDK allows one sensor per PC. The C++ clients streamed color and depth over TCP to a C# server that calibrated the sensors, fused the three clouds, buffered the timeline, and served the result to three viewers on separate ports: a HoloLens 2 app with pinch, grab and voice control, a browser viewer with touch controls, and a desktop viewer driven by a Leap Motion controller. We started from LiveScan3D, an open-source Kinect capture system [3], and built the replay, annotation and multi-viewer layers on top.
+Three Kinect v2 sensors each fed a client laptop, because the Kinect SDK allows one sensor per PC. The C++ clients streamed color and depth over TCP to a C# server that calibrated the sensors, fused the three clouds, buffered the timeline, and served the result to three viewers on separate ports: a HoloLens 2 app with pinch, grab and voice control, a browser viewer with touch controls, and a desktop viewer with Leap Motion hand control. We started from LiveScan3D, an open-source Kinect capture system [3], and built the replay, annotation and multi-viewer layers on top.
 
 <div style="position:relative; padding-bottom:56.25%; height:0; overflow:hidden; margin:16px 0;">
   <iframe
@@ -36,7 +36,7 @@ Three Kinect v2 sensors each fed a client laptop, because the Kinect SDK allows 
   />
 </div>
 
-A rolling RAM buffer keeps the last 30 seconds, so any moment can be replayed and orbited. Annotations drawn in one viewer appear in every other viewer. A diff mode overlays a saved frame in red against the live frame in green, which shows exactly what moved in a scene.
+A rolling RAM buffer keeps the last 30 seconds, so a viewer can replay and orbit any moment. An annotation that someone draws in one viewer appears in every other viewer. A diff mode overlays a saved frame in red against the live frame in green, which shows exactly what moved in a scene.
 
 <figure>
   <img src="/assets/tempo3.png" alt="Fused Kinect point cloud of a calibration marker on the floor with annotations drawn over the scene" loading="lazy" />
@@ -61,30 +61,30 @@ We first calibrated with PnP: detect the printed marker in each camera's color i
 
 ## Lattice now
 
-The current rig uses four ZED X stereo cameras on GMSL2, hardware-synced to under 100 µs. A Jetson AGX Orin only captures and encodes, then sends frames over a 25 GbE link to a workstation with two RTX 5090s, which runs depth, reconstruction and streaming. Viewers connect through a Cloudflare MoQ relay.
+The current rig uses four ZED X stereo cameras on GMSL2, with hardware sync under 100 µs. A Jetson AGX Orin only captures and encodes, then sends frames over a 25 GbE link to a workstation with two RTX 5090s, which runs depth, reconstruction and streaming. Viewers connect through a Cloudflare MoQ relay.
 
-**Reconstruction.** A 26-stage CUDA pipeline fuses the cameras, meshes the surface, completes missing depth and completes occluded body parts. Each camera runs in a separate worker process under MPS, and frames are paired by hardware timestamp, because sequence counters drift once processes run independently. A TSDF voxel only meshes after three integration passes agree, which removes ghost surfaces left by moving people. Depth fill runs at 3.5 ms per frame.
+**Reconstruction.** A 26-stage CUDA pipeline fuses the cameras, meshes the surface, completes missing depth and completes occluded body parts. Each camera runs in a separate worker process under MPS, and the pipeline pairs frames by hardware timestamp, because sequence counters drift once processes run independently. A TSDF voxel only meshes after three integration passes agree, which removes the ghost surfaces that moving people leave behind. Depth fill runs at 3.5 ms per frame.
 
-**Calibration.** The rig is calibrated once with a ChArUco board, and a self-calibration step runs on every take after that. I designed the self-calibration residual around pixel-ray agreement between cameras instead of depth-to-depth ICP. Depth is computed from the calibration, so using depth to estimate the calibration converges to a self-consistent wrong answer. ICP now only audits the result.
+**Calibration.** We calibrate the rig once with a ChArUco board, and a self-calibration step runs on every take after that. I designed the self-calibration residual around pixel-ray agreement between cameras instead of depth-to-depth ICP. The pipeline computes depth from the calibration, so using depth to estimate the calibration converges to a self-consistent wrong answer. ICP now only audits the result.
 
-**Body tracking.** 2D keypoints from each camera are triangulated with a weighted least-squares ray intersection, then a body model with about 130 degrees of freedom is fitted with Levenberg-Marquardt. LM brought the fit error from 111 mm to 0.17 mm in six iterations, while Adam diverged on the same problem. A Gauss-Newton correction runs every render frame in under 1.5 ms for two people.
+**Body tracking.** The pipeline triangulates 2D keypoints from each camera with a weighted least-squares ray intersection, then fits a body model with about 130 degrees of freedom using Levenberg-Marquardt. LM brought the fit error from 111 mm to 0.17 mm in six iterations, while Adam diverged on the same problem. A Gauss-Newton correction runs every render frame in under 1.5 ms for two people.
 
 **Streaming.** An exact encoding of the reconstruction needs 5.7 Gbps on a link of about 700 Mbps. The custom splat format packs each splat into 0.905 bytes, about eight times smaller, with a median normal error of 5.7° or less, using quantization along each camera ray and context-modeled rANS entropy coding. Splat order turned out to be a compression parameter: one reordering cut neighbor availability from 97.5% to 18.1% and turned a 6.9% gain into a 6.9% loss.
 
 ### Does 3D capture make better robot data?
 
-I built our benchmarking, which asks whether multi-camera 4D capture is better robot training data than the best single camera from the same rig. Each link in the chain is pre-registered and graded by a held-out referee camera that neither source used, with a paired z above 2 to pass.
+I built our benchmarking, which asks whether multi-camera 4D capture is better robot training data than the best single camera from the same rig. I pre-register each link in the chain, and a held-out referee camera that neither source used grades each link, with a paired z above 2 to pass.
 
 - **Measurement.** Cloth reconstruction is 37.8% more accurate (30.3 mm against 60.0 mm). About a third of the gain comes from the extra cameras' cloth points and the rest from the multi-camera body and hand fit.
-- **Usable data.** Single-camera hands leave gaps inside contacts, so they cannot drive a cloth twin. Retargeted to a Unitree G1, 60 of 100 Lattice demos replay against 25 of 100.
-- **Policy.** Diffusion Policy trained on Lattice demos succeeds on 109 of 150 episodes against 82 of 150 (z = 3.36). In an Isaac Lab-Arena pick-and-place task, Lattice data scores 0.73 against 0.55 for the best single camera, still wins with the demo count matched, and pooling all four single cameras without fusion only reaches 0.43, so the gain comes from the cross-camera fusion. Shifting the actions one second late drops the score to 0 of 50, which shows the benchmark can tell good data from corrupted data.
+- **Usable data.** Single-camera hands leave gaps inside contacts, so they cannot drive a cloth twin. When we retarget the demos to a Unitree G1, 60 of 100 Lattice demos replay, against 25 of 100.
+- **Policy.** A Diffusion Policy that we trained on Lattice demos succeeds on 109 of 150 episodes against 82 of 150 (z = 3.36). In an Isaac Lab-Arena pick-and-place task, Lattice data scores 0.73 against 0.55 for the best single camera, still wins when we match the demo count, and pooling all four single cameras without fusion only reaches 0.43, so the gain comes from the cross-camera fusion. Shifting the actions one second late drops the score to 0 of 50, which shows the benchmark can tell good data from corrupted data.
 - **World model.** Fine-tuning NVIDIA's PointWorld on Lattice data lands 6.4% closer to the referee camera than the public model and 47.3% closer than single-camera data.
 
-The negative results stay on the record. On a cloth-fold simulation benchmark, our fused reconstruction lost to a single raw camera (44.1 mm against 26.9 mm surface divergence). I ruled out three confounds with evidence before writing the cause down as unknown; the leading idea is that more accurate surface relief is not something the simulator handles well. A cloth world model fine-tuned on our data failed four registered tests, traced to the model's training targets drifting 7 to 26 mm above the measured cloth.
+The negative results stay on the record. On a cloth-fold simulation benchmark, our fused reconstruction lost to a single raw camera (44.1 mm against 26.9 mm surface divergence). I ruled out three confounds with evidence before writing the cause down as unknown; the leading idea is that more accurate surface relief is not something the simulator handles well. A cloth world model that we fine-tuned on our data failed four registered tests, and I traced the failures to the model's training targets, which drift 7 to 26 mm above the measured cloth.
 
 ### NVIDIA V2D challenge
 
-Track 1 of NVIDIA's V2D challenge asks for a full human-object interaction (body, object shape and pose, metric scale, one world frame) from a single uncalibrated RGB video. We built our own method instead of adopting NVIDIA's baseline: one persistent world state for the person, object and room, fitted jointly over each episode, with every residual (body measurement, object track, silhouette, contact, no interpenetration, smooth motion) weighted by that source's measured noise instead of hand-tuned rules.
+Track 1 of NVIDIA's V2D challenge asks for a full human-object interaction (body, object shape and pose, metric scale, one world frame) from a single uncalibrated RGB video. We built our own method instead of adopting NVIDIA's baseline: one persistent world state for the person, object and room, which we fit jointly over each episode. We weight every residual (body measurement, object track, silhouette, contact, no interpenetration, smooth motion) by that source's measured noise instead of hand-tuned rules.
 
 $$\min_{x}\sum_k \frac{1}{\sigma_k^2}\|r_k(x)\|^2 \quad \text{subject to no penetration}$$
 
