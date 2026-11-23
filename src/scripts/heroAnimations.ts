@@ -3,11 +3,14 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
   if (!ctx) return () => {};
 
   let _rafId = -1;
+  /** Setting canvas.width wipes the bitmap, so a finished still frame must paint again. */
+  let wiped = false;
 
   const resize = () => {
     canvas.width = canvas.offsetWidth * window.devicePixelRatio;
     canvas.height = canvas.offsetHeight * window.devicePixelRatio;
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    wiped = true;
   };
   resize();
   window.addEventListener('resize', resize);
@@ -335,8 +338,8 @@ export function initHeroAnimation(type: string, canvas: HTMLCanvasElement): () =
     const draw = () => {
       const w = W(), h = H();
       const k = ease(Math.min(1, (performance.now() - start) / 900));
-      if (done && w === lastW && h === lastH) { _rafId = requestAnimationFrame(draw); return; }
-      done = k === 1; lastW = w; lastH = h;
+      if (done && !wiped && w === lastW && h === lastH) { _rafId = requestAnimationFrame(draw); return; }
+      done = k === 1; lastW = w; lastH = h; wiped = false;
 
       ctx.fillStyle = '#0b1120';
       ctx.fillRect(0, 0, w, h);
