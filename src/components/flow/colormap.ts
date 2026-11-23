@@ -5,6 +5,7 @@ export type Rgba = [number, number, number, number];
 
 /** Signed band index in -LEVELS..LEVELS; 0 sits below the first threshold. */
 export function bandOf(w: number, ref: number): number {
+  if (!(ref > 0) || w === 0) return 0;
   const a = Math.abs(w);
   let band = 0;
   for (let k = 0; k < LEVELS; k++) {

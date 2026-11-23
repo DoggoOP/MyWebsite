@@ -22,3 +22,8 @@ test('hues follow the Wolfram figure', () => {
 test('lut is 17 entries', () => {
   expect(buildLut('dark')).toHaveLength(68);
 });
+test('a zero or negative reference yields no band', () => {
+  expect(bandOf(0, 1)).toBe(0);
+  expect(bandOf(1, 0)).toBe(0);
+  expect(bandOf(-1, -1)).toBe(0);
+});
