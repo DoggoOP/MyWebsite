@@ -32,7 +32,8 @@
   aspect-ratio: 1;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--scanbg);
+  background: transparent;
+  border: 1px solid var(--rule);
   touch-action: none;
   cursor: grab;
 }
