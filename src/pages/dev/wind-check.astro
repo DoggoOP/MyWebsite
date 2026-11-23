@@ -1,0 +1,108 @@
+---
+// Dev check: GpuLbm must reproduce CpuLbm. Not linked, not in the sitemap or llms.txt.
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>wind check</title>
+    <style>
+      body { margin: 16px; font: 14px/1.4 ui-monospace, Menlo, monospace; background: #f7f6f2; color: #161614; }
+      canvas { display: block; margin-top: 12px; width: 288px; height: 480px; background: #ffffff; image-rendering: pixelated; }
+    </style>
+  </head>
+  <body>
+    <pre id="result">running...</pre>
+    <script>
+      import { CpuLbm } from '../../components/flow/lbmCpu';
+      import { GpuLbm, type Precision } from '../../components/flow/gpuLbm';
+      import { pickBackend } from '../../components/flow/backend';
+      import { buildLut } from '../../components/flow/colormap';
+
+      const COLS = 96, ROWS = 160;
+      const LIMITS: Record<Precision, number> = { f32: 2e-3, f16: 2e-2 };
+      const out = document.getElementById('result')!;
+      const lines: string[] = [];
+      const show = (line: string) => { lines.push(line); out.textContent = lines.join('\n'); };
+
+      /** Max abs difference; NaN when either side holds a non-finite value. */
+      function maxDiff(a: Float32Array, b: Float32Array): number {
+        let max = 0;
+        for (let i = 0; i < a.length; i++) {
+          const d = Math.abs(a[i] - b[i]);
+          if (!Number.isFinite(d)) return NaN;
+          if (d > max) max = d;
+        }
+        return max;
+      }
+
+      function run() {
+        const canvas = document.createElement('canvas');
+        canvas.width = COLS * 3;
+        canvas.height = ROWS * 3;
+        document.body.append(canvas);
+        const gl = canvas.getContext('webgl2', {
+          premultipliedAlpha: false, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: true,
+        });
+        if (!gl) { show('FAIL no webgl2'); return; }
+        const asked = new URLSearchParams(location.search).get('precision');
+        const auto = pickBackend(gl);
+        const precision: Precision | 'cpu' = asked === 'f32' || asked === 'f16' ? asked : auto;
+        if (precision === 'cpu') { show('FAIL cpu: no float render targets'); return; }
+
+        // Parity: radius-8 cylinder at (48, 40), seeded wake, one push at step 100.
+        const mask = new Uint8Array(COLS * ROWS);
+        for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+          if ((x - 48) ** 2 + (y - 40) ** 2 <= 64) mask[y * COLS + x] = 1;
+        }
+        const cpu = new CpuLbm(COLS, ROWS);
+        const gpu = new GpuLbm(gl, COLS, ROWS, precision);
+        for (const s of [cpu, gpu]) {
+          s.setMask(mask);
+          s.initUniform();
+          s.seedWake(48, 40, 8);
+        }
+        let diff = NaN;
+        let peak = 0;
+        for (let block = 1; block <= 3; block++) {
+          if (block === 2) for (const s of [cpu, gpu]) s.addForce(48, 100, 0.2, -0.2, 6);
+          cpu.step(100);
+          gpu.step(100);
+          const w = cpu.vorticity();
+          diff = maxDiff(w, gpu.readVorticity());
+          peak = w.reduce((m, x) => Math.max(m, Math.abs(x)), 0);
+          console.log(`wind-check ${precision} step ${block * 100}: maxdiff=${diff} peak|w|=${peak}`);
+        }
+        const verdict = diff < LIMITS[precision] ? 'PASS' : 'FAIL';
+        show(`${verdict} ${precision} maxdiff=${diff.toExponential(3)}${verdict === 'FAIL' ? ` limit=${LIMITS[precision]}` : ''}`);
+
+        // Throughput on a full-page sized grid; render + a 1-pixel read wait for the GPU.
+        const bench = new GpuLbm(gl, 290, 920, precision);
+        const pixel = new Uint8Array(4);
+        const lut = buildLut('light');
+        const sync = () => {
+          bench.render({ topRow: 0, viewRows: 1, lut, ref: 1 });
+          gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+        };
+        bench.step(20);
+        sync();
+        const t0 = performance.now();
+        for (let i = 0; i < 20; i++) bench.step(100);
+        sync();
+        const seconds = (performance.now() - t0) / 1000;
+        bench.dispose();
+        show(`steps/sec=${Math.round(2000 / seconds)} grid=290x920 steps=2000 ${precision}`);
+
+        gpu.render({ topRow: 0, viewRows: ROWS, lut, ref: peak });
+      }
+
+      try {
+        run();
+      } catch (err) {
+        show(`FAIL ${err instanceof Error ? err.message : String(err)}`);
+        console.error(err);
+      }
+    </script>
+  </body>
+</html>
