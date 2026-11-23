@@ -8,7 +8,8 @@ import { DX, DY, OPP, WT, OMEGA, LATTICE_SPEED, RHO_MIN, RHO_MAX, VELOCITY_LIMIT
  * The f values are post-collision distributions. C.yzw hold the moments of the
  * pre-collision (post-stream) state: raw rho - 1 (99 when the rho guard fired) and
  * raw ux, uy (clamped to +-1). Solid cells hold zero moments. With `#define F16`
- * the textures store f - WT[k], and every read adds WT[k] back.
+ * the textures store f minus the inlet equilibrium feq_k(1, 0, SPEED), and every
+ * read adds that back.
  */
 
 /** Float literal for GLSL: always carries a decimal point. */
@@ -34,9 +35,14 @@ const float BIAS = 1.0;
 #else
 const float BIAS = 0.0;
 #endif
-const vec4 BA = BIAS * vec4(W0, W1, W1, W1);
-const vec4 BB = BIAS * vec4(W1, W5, W5, W5);
-const vec4 BC = BIAS * vec4(W5, 0.0, 0.0, 0.0);
+// F16 stores f - feq_k(rho 1, u (0, SPEED)), the inlet equilibrium, so the stored
+// deviations stay small and keep more half-float precision.
+const float EQ_BASE = 1.0 - 1.5 * SPEED * SPEED;
+const float EQ_DOWN = EQ_BASE + 3.0 * SPEED + 4.5 * SPEED * SPEED;
+const float EQ_UP = EQ_BASE - 3.0 * SPEED + 4.5 * SPEED * SPEED;
+const vec4 BA = BIAS * vec4(W0 * EQ_BASE, W1 * EQ_BASE, W1 * EQ_DOWN, W1 * EQ_BASE);
+const vec4 BB = BIAS * vec4(W1 * EQ_UP, W5 * EQ_DOWN, W5 * EQ_DOWN, W5 * EQ_UP);
+const vec4 BC = BIAS * vec4(W5 * EQ_UP, 0.0, 0.0, 0.0);
 
 uniform ivec2 uSize;
 uniform sampler2D uMask;
