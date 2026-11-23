@@ -1,16 +1,15 @@
 import './PointCloudViewer.css';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
-import { Airflow, type FlowMode } from './airflow';
-import { ParticleLife, SPECIES, DEFAULT_FORCES } from './particleLife';
 
 interface PointCloudViewerProps {
   src: string;
   axesSrc?: string;
   className?: string;
   filter?: boolean;
-  airflow?: boolean;
+  circle?: boolean;
+  intro?: boolean;
 }
 
 interface Annotation {
@@ -58,10 +57,6 @@ function parseLssnap(buffer: ArrayBuffer): LssnapData {
   return { vertexCount, positions, colors, annotations };
 }
 
-function flowDirectionLabel(vertical: boolean, direction: 1 | -1) {
-  return `Flow ${vertical ? (direction === 1 ? '↓' : '↑') : (direction === 1 ? '→' : '←')}`;
-}
-
 async function fetchAsset(url: string, signal: AbortSignal, onProgress: (loaded: number, total: number) => void) {
   const response = await fetch(url, { signal });
   if (!response.ok) throw new Error(`Could not load ${url}`);
@@ -89,61 +84,25 @@ async function fetchAsset(url: string, signal: AbortSignal, onProgress: (loaded:
   return bytes.buffer;
 }
 
-export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfels.bin', className, filter = true, airflow = false }: PointCloudViewerProps) {
-  const [flowMode, setFlowMode] = useState<FlowMode>('vorticity');
-  const [sceneMode, setSceneMode] = useState<'particles' | 'flow'>('flow');
-  const sceneModeRef = useRef<'particles' | 'flow'>('flow');
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [dockOpen, setDockOpen] = useState(false);
-  const [particleCount, setParticleCount] = useState(1300);
-  const [particleRadius, setParticleRadius] = useState(58);
-  const [particleStrength, setParticleStrength] = useState(1);
-  const [particleFriction, setParticleFriction] = useState(0.08);
-  const [forceMatrix, setForceMatrix] = useState(DEFAULT_FORCES.map(row => [...row]));
+export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfels.bin', className, filter = true, circle = false, intro = true }: PointCloudViewerProps) {
   const mountRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const statusRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<{
     animId?: number;
   }>({});
 
-  const statusRef = useRef<HTMLDivElement>(null);
-  const uiRef = useRef<HTMLDivElement>(null);
-  const flowControlRef = useRef<Airflow | null>(null);
-  const particleControlRef = useRef<ParticleLife | null>(null);
-  const flowSpeedRef = useRef(1.25);
-  const flowDirectionRef = useRef<1 | -1>(1);
-  const speedReadoutRef = useRef<HTMLOutputElement>(null);
-  const directionBtnRef = useRef<HTMLButtonElement>(null);
-
   useEffect(() => {
     if (!mountRef.current) return;
     const container = mountRef.current;
+    const wrapper = wrapperRef.current;
     const s = stateRef.current;
-    const flowCanvas = airflow ? document.getElementById('flow-canvas') as HTMLCanvasElement | null : null;
-    const flow = flowCanvas ? new Airflow(flowCanvas) : null;
-    const particles = flowCanvas ? new ParticleLife(flowCanvas) : null;
-    flowControlRef.current = flow;
-    particleControlRef.current = particles;
-    flow?.setFlow(flowSpeedRef.current, flowDirectionRef.current);
-    if (directionBtnRef.current && flow)
-      directionBtnRef.current.textContent = flowDirectionLabel(flow.isVertical(), flowDirectionRef.current);
     let modelPositions: Float32Array | null = null;
     let sortSurfels: (() => void) | null = null;
     let lastSort = 0;
     const lastSortedPos = new THREE.Vector3();
     const lastSortedQuat = new THREE.Quaternion();
-    let frame = 0;
-    let lastFlow = 0;
     let modelReady = false;
-    const card = document.getElementById('bio-card');
-    const onPointerMove = (event: PointerEvent) => {
-      if (sceneModeRef.current === 'flow') flow?.pointerMove(event.clientX, event.clientY);
-      else particles?.pointerMove(event.clientX, event.clientY);
-    };
-    const onPointerOut = (event: PointerEvent) => {
-      if (!event.relatedTarget) { flow?.pointerLeave(); particles?.pointerLeave(); }
-    };
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerout', onPointerOut);
 
     const scene = new THREE.Scene();
     scene.background = null;
@@ -164,13 +123,62 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
     // The homepage scan sits in a half-width canvas. Keep orbit/zoom interactive,
     // but prevent the camera from moving so close (or panning so far) that the
     // person is sliced by that canvas edge.
-    controls.noPan = airflow;
+    controls.noPan = circle;
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 
+    // Intro swing: a damped yaw about the vertical (z) axis around the target.
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let introStart = 0;
+    let introActive = false;
+    let introAngle = 0;
+    const yawAxis = new THREE.Vector3(0, 0, 1);
+    const offset = new THREE.Vector3();
+    const cancelIntro = () => { introActive = false; };
+    renderer.domElement.addEventListener('pointerdown', cancelIntro);
+    const stepIntro = (now: number) => {
+      const t = (now - introStart) / 1000;
+      const angle = t >= 2.6 ? 0 : 0.42 * Math.sin(t * 2 * Math.PI / 1.3) * (1 - t / 2.6);
+      offset.copy(camera.position).sub(controls.target)
+        .applyAxisAngle(yawAxis, angle - introAngle);
+      camera.position.copy(controls.target).add(offset);
+      introAngle = angle;
+      if (t >= 2.6) introActive = false;
+    };
+
+    // Silhouette: every 4th surfel projected to page space for the page wind solver.
+    const projected = new THREE.Vector3();
+    const lastEmitPos = new THREE.Vector3();
+    const lastEmitQuat = new THREE.Quaternion();
+    let lastEmit = 0;
+    const emitSilhouette = () => {
+      if (!circle || !wrapper || !modelPositions) return;
+      camera.updateMatrixWorld();
+      const rect = container.getBoundingClientRect();
+      const count = Math.ceil(modelPositions.length / 12);
+      const out = new Float32Array(count * 2);
+      let n = 0;
+      for (let i = 0; i < modelPositions.length; i += 12) {
+        projected.set(modelPositions[i], modelPositions[i + 1], modelPositions[i + 2]).project(camera);
+        if (projected.z > 1) continue;
+        out[n++] = rect.left + (projected.x * 0.5 + 0.5) * rect.width + window.scrollX;
+        out[n++] = rect.top + (0.5 - projected.y * 0.5) * rect.height + window.scrollY;
+      }
+      wrapper.dispatchEvent(new CustomEvent('scan-silhouette', { detail: out.slice(0, n) }));
+      lastEmit = performance.now();
+      lastEmitPos.copy(camera.position);
+      lastEmitQuat.copy(camera.quaternion);
+    };
+
     const animate = () => {
       s.animId = requestAnimationFrame(animate);
+      if (introActive) stepIntro(performance.now());
       controls.update();
+      if (circle && modelReady && performance.now() - lastEmit > 120 &&
+          (camera.position.distanceToSquared(lastEmitPos) > 1e-6 ||
+            camera.quaternion.angleTo(lastEmitQuat) > 1e-4)) {
+        emitSilhouette();
+      }
       if (sortSurfels && performance.now() - lastSort > 120 &&
           (camera.position.distanceToSquared(lastSortedPos) > 0.0001 ||
             camera.quaternion.angleTo(lastSortedQuat) > 0.01)) {
@@ -178,16 +186,6 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
         lastSort = performance.now();
         lastSortedPos.copy(camera.position);
         lastSortedQuat.copy(camera.quaternion);
-      }
-      if (flow && performance.now() - lastFlow > (modelReady ? 30 : 90)) {
-        if (++frame % 6 === 0) {
-          flow.updateObstacles(modelPositions, camera,
-            container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
-          particles?.setObstacles(flow.getObstacleMask());
-        }
-        if (sceneModeRef.current === 'flow') flow.step();
-        else particles?.step();
-        lastFlow = performance.now();
       }
       renderer.render(scene, camera);
     };
@@ -200,12 +198,7 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
       camera.updateProjectionMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
       controls.handleResize();
-      flow?.resize();
-      particles?.resize();
-      if (directionBtnRef.current && flow)
-        directionBtnRef.current.textContent = flowDirectionLabel(flow.isVertical(), flowDirectionRef.current);
-      flow?.updateObstacles(modelPositions, camera, container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
-      if (flow) particles?.setObstacles(flow.getObstacleMask());
+      emitSilhouette();
     };
     window.addEventListener('resize', onResize);
 
@@ -404,7 +397,7 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
         camera.filmOffset = window.innerWidth <= 900 ? 0 : 4;
         camera.updateProjectionMatrix();
         camera.lookAt(controls.target);
-        if (airflow) {
+        if (circle) {
           const framingDistance = camera.position.distanceTo(controls.target);
           controls.minDistance = framingDistance * 0.88;
           controls.maxDistance = framingDistance * 1.8;
@@ -414,8 +407,6 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
         lastSort = performance.now();
         lastSortedPos.copy(camera.position);
         lastSortedQuat.copy(camera.quaternion);
-        flow?.updateObstacles(modelPositions, camera, container.getBoundingClientRect(), card?.getBoundingClientRect() || null);
-        if (flow) particles?.setObstacles(flow.getObstacleMask());
 
         const annGroup = new THREE.Group();
         for (const ann of data.annotations) {
@@ -459,12 +450,15 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
         scene.add(annGroup);
 
         modelReady = true;
+        emitSilhouette();
+        if (circle && intro && !reducedMotion) {
+          introStart = performance.now();
+          introAngle = 0;
+          introActive = true;
+        }
         showProgress(100);
         if (statusRef.current) statusRef.current.style.display = 'none';
         if (loadingStatus) loadingStatus.style.display = 'none';
-        if (uiRef.current) uiRef.current.style.display = 'flex';
-        const flowKey = document.getElementById('flow-key');
-        if (flowKey) flowKey.style.display = sceneModeRef.current === 'flow' ? '' : 'none';
       })
       .catch(err => {
         if (err.name === 'AbortError') return;
@@ -475,135 +469,30 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
     return () => {
       loadAbort.abort();
       window.removeEventListener('resize', onResize);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerout', onPointerOut);
-      flowControlRef.current = null;
-      particleControlRef.current = null;
+      renderer.domElement.removeEventListener('pointerdown', cancelIntro);
       if (s.animId) cancelAnimationFrame(s.animId);
       controls.dispose();
       renderer.dispose();
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
-  }, [src, axesSrc, filter, airflow]);
+  }, [src, axesSrc, filter, circle, intro]);
 
-  const handleFlowSpeed = (event: React.ChangeEvent<HTMLInputElement>) => {
-    flowSpeedRef.current = Number(event.target.value);
-    flowControlRef.current?.setFlow(flowSpeedRef.current, flowDirectionRef.current);
-    if (speedReadoutRef.current) speedReadoutRef.current.value = `${flowSpeedRef.current.toFixed(2)}×`;
-  };
-
-  const handleFlowDirection = () => {
-    flowDirectionRef.current = flowDirectionRef.current === 1 ? -1 : 1;
-    flowControlRef.current?.setFlow(flowSpeedRef.current, flowDirectionRef.current);
-    if (directionBtnRef.current)
-      directionBtnRef.current.textContent = flowDirectionLabel(flowControlRef.current?.isVertical() ?? false, flowDirectionRef.current);
-  };
-
-  const handleFlowMode = (mode: FlowMode) => {
-    setFlowMode(mode);
-    flowControlRef.current?.setMode(mode);
-    const name = document.getElementById('flow-key-mode');
-    const low = document.getElementById('flow-key-low');
-    const high = document.getElementById('flow-key-high');
-    if (name) name.textContent = mode === 'pressure' ? 'Pressure field' : mode === 'vorticity' ? 'Vorticity' : 'Flow speed';
-    if (low) low.textContent = mode === 'vorticity' ? '−' : mode === 'speed' ? 'slow' : 'low';
-    if (high) high.textContent = mode === 'vorticity' ? '+' : mode === 'speed' ? 'fast' : 'high';
-  };
-
-  const handleSceneMode = (mode: 'particles' | 'flow') => {
-    sceneModeRef.current = mode;
-    setSceneMode(mode);
-    setSettingsOpen(false);
-    flowControlRef.current?.pointerLeave();
-    particleControlRef.current?.pointerLeave();
-    const flowKey = document.getElementById('flow-key');
-    if (flowKey) flowKey.style.display = mode === 'flow' ? '' : 'none';
-  };
-
-  const handleMatrixCell = (from: number, to: number) => {
-    setForceMatrix(current => {
-      const updated = current.map(row => [...row]);
-      const value = updated[from][to];
-      updated[from][to] = value >= 0.75 ? -1 : Math.round((value + 0.5) * 2) / 2;
-      particleControlRef.current?.setForce(from, to, updated[from][to]);
-      return updated;
-    });
+  const setGrabbing = (grabbing: boolean) => {
+    wrapperRef.current?.classList.toggle('is-grabbing', grabbing);
   };
 
   return (
-    <div className={`pcv-wrapper ${className || ''}`}>
+    <div
+      ref={wrapperRef}
+      className={`pcv-wrapper${circle ? ' pcv-circle' : ''} ${className || ''}`}
+      data-scan={circle ? '' : undefined}
+      onPointerDown={circle ? () => setGrabbing(true) : undefined}
+      onPointerUp={circle ? () => setGrabbing(false) : undefined}
+      onPointerCancel={circle ? () => setGrabbing(false) : undefined}
+      onPointerLeave={circle ? () => setGrabbing(false) : undefined}
+    >
       <div ref={mountRef} className="pcv-canvas" />
       <div ref={statusRef} className="pcv-status">Loading point cloud…</div>
-      {airflow && <>
-        {sceneMode === 'particles' && settingsOpen && <aside className="pcv-particle-settings" aria-label="Particle interaction settings">
-          <div className="pcv-settings-heading"><span>Particle settings</span><button onClick={() => setSettingsOpen(false)} aria-label="Close particle settings">×</button></div>
-          <label>Count <input type="range" min="300" max="3000" step="100" value={particleCount} onChange={event => { const value = Number(event.target.value); setParticleCount(value); particleControlRef.current?.setCount(value); }} /><output>{particleCount}</output></label>
-          <label>Radius <input type="range" min="25" max="100" step="1" value={particleRadius} onChange={event => { const value = Number(event.target.value); setParticleRadius(value); particleControlRef.current?.setRadius(value); }} /><output>{particleRadius}px</output></label>
-          <label>Force <input type="range" min="0.2" max="2" step="0.05" value={particleStrength} onChange={event => { const value = Number(event.target.value); setParticleStrength(value); particleControlRef.current?.setStrength(value); }} /><output>{particleStrength.toFixed(2)}×</output></label>
-          <label>Friction <input type="range" min="0.02" max="0.4" step="0.01" value={particleFriction} onChange={event => { const value = Number(event.target.value); setParticleFriction(value); particleControlRef.current?.setFriction(value); }} /><output>{particleFriction.toFixed(2)}</output></label>
-          <div className="pcv-matrix-title">Interaction matrix <span>tap a cell to adjust its force</span></div>
-          <div className="pcv-matrix" role="group" aria-label="Species interaction matrix">
-            <span className="pcv-matrix-corner" />
-            {SPECIES.map(species => <span key={`head-${species.name}`} className="pcv-species-dot" style={{ background: species.color }} title={species.name} />)}
-            {SPECIES.map((from, row) => <div className="pcv-matrix-row" key={from.name}>
-              <span className="pcv-species-dot" style={{ background: from.color }} title={from.name} />
-              {SPECIES.map((to, col) => {
-                const value = forceMatrix[row][col];
-                return <button key={to.name} type="button" onClick={() => handleMatrixCell(row, col)}
-                  className={`pcv-matrix-cell ${value > 0.2 ? 'positive' : value < -0.2 ? 'negative' : 'neutral'}`}
-                  aria-label={`${from.name} toward ${to.name}: ${value.toFixed(2)}; change force`}
-                  title={`${from.name} → ${to.name}: ${value.toFixed(2)}`}>
-                  {value > 0.2 ? '+' : value < -0.2 ? '−' : '·'}
-                </button>;
-              })}
-            </div>)}
-          </div>
-        </aside>}
-        <div ref={uiRef} className="pcv-dock" style={{ display: 'none' }}>
-          {dockOpen && <div className="pcv-panel" id="pcv-panel" role="group" aria-label="Wind tunnel controls">
-            <div className="pcv-row">
-              <span className="pcv-row-label">Sim</span>
-              <div className="pcv-seg">
-                <button className={`pcv-btn ${sceneMode === 'flow' ? 'is-active' : ''}`} aria-pressed={sceneMode === 'flow'} onClick={() => handleSceneMode('flow')}>Flow</button>
-                <button className={`pcv-btn ${sceneMode === 'particles' ? 'is-active' : ''}`} aria-pressed={sceneMode === 'particles'} onClick={() => handleSceneMode('particles')}>Particles</button>
-              </div>
-            </div>
-            {sceneMode === 'particles'
-              ? <div className="pcv-row">
-                  <span className="pcv-row-label">Rules</span>
-                  <button className={`pcv-btn ${settingsOpen ? 'is-active' : ''}`} aria-expanded={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}>{settingsOpen ? 'Hide settings' : 'Settings'}</button>
-                </div>
-              : <>
-                  <div className="pcv-row">
-                    <span className="pcv-row-label">Show</span>
-                    <div className="pcv-seg">
-                      {(['vorticity', 'pressure', 'speed'] as FlowMode[]).map(mode =>
-                        <button key={mode} className={`pcv-btn ${flowMode === mode ? 'is-active' : ''}`} aria-pressed={flowMode === mode} onClick={() => handleFlowMode(mode)}>{mode === 'pressure' ? 'Pressure' : mode === 'vorticity' ? 'Vorticity' : 'Speed'}</button>
-                      )}
-                    </div>
-                  </div>
-                  <label className="pcv-row pcv-flow-speed">
-                    <span className="pcv-row-label">Wind</span>
-                    <input type="range" min="0.4" max="2" step="0.05" defaultValue={flowSpeedRef.current} onChange={handleFlowSpeed} aria-label="Airflow speed" />
-                    <output ref={speedReadoutRef}>{flowSpeedRef.current.toFixed(2)}×</output>
-                  </label>
-                  <div className="pcv-row">
-                    <span className="pcv-row-label">Direction</span>
-                    <button onClick={handleFlowDirection} ref={directionBtnRef} className="pcv-btn" aria-label="Reverse airflow direction">{flowDirectionLabel(flowControlRef.current?.isVertical() ?? false, flowDirectionRef.current)}</button>
-                  </div>
-                </>}
-          </div>}
-          <button className="pcv-toggle" aria-expanded={dockOpen} aria-controls="pcv-panel" onClick={() => { setDockOpen(!dockOpen); if (dockOpen) setSettingsOpen(false); }}>
-            <span className="pcv-toggle-title">Wind tunnel</span>
-            <span id="flow-key" className="pcv-key" aria-hidden="true">
-              <span id="flow-key-mode">Vorticity</span>
-              <i className="pcv-key-low" /><span id="flow-key-low">−</span>
-              <i className="pcv-key-high" /><span id="flow-key-high">+</span>
-            </span>
-            <span className="pcv-toggle-caret" aria-hidden="true">{dockOpen ? '×' : '+'}</span>
-          </button>
-        </div>
-      </>}
     </div>
   );
 }
