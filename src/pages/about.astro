@@ -47,8 +47,8 @@ const pieces = [
 ---
 
 <BaseLayout title="About · Ethan Kong" description="Ethan Kong on sailing for Hong Kong, ceramics, and how both led to aerospace.">
-  <main class="page about">
-    <h1 class="display page-title">About</h1>
+  <main class="col about">
+    <h1 class="title">About</h1>
     <div class="prose lede">
       <p>
         I grew up in Hong Kong and went to HKIS before Stanford. Outside of engineering,
@@ -57,7 +57,8 @@ const pieces = [
     </div>
 
     <section class="section" aria-labelledby="sailing">
-      <h2 id="sailing" class="display section-title">Sailing</h2>
+      <h2 id="sailing" class="section-title">Sailing</h2>
+      <div class="sailing">
       <div class="prose text">
         <p>
           I started at ten in an Optimist, the little single-handed boat most kids learn in.
@@ -78,8 +79,8 @@ const pieces = [
           Sailing is also why I study aerospace. Wanting to know why a sail works led me to
           fluid dynamics, then to <a href="/projects/sailing-rl">a lattice-Boltzmann sail model
           and an agent that learned to tack</a>, and later to a camber-changing sail on the
-          <a href="/projects/solar-car">solar car</a>. The wind tunnel on my
-          <a href="/">home page</a> runs the same kind of sim.
+          <a href="/projects/solar-car">solar car</a>. The wind on my
+          <a href="/">home page</a> ends on those same sails.
         </p>
       </div>
 
@@ -91,10 +92,11 @@ const pieces = [
           </figure>
         ))}
       </div>
+      </div>
     </section>
 
     <section class="section" aria-labelledby="ceramics">
-      <h2 id="ceramics" class="display section-title">Ceramics</h2>
+      <h2 id="ceramics" class="section-title">Ceramics</h2>
       <div class="prose text">
         <p>
           I've worked with clay since I was seven. In high school my portfolio was about the
@@ -128,7 +130,7 @@ const pieces = [
               )}
             </button>
             <div class="piece-head">
-              <h3 class="display piece-title">{piece.title}</h3>
+              <h3 class="piece-title">{piece.title}</h3>
               <span class="piece-year">{piece.year}</span>
             </div>
             <p class="piece-materials">{piece.materials} · {piece.size}</p>
@@ -145,43 +147,72 @@ const pieces = [
 </BaseLayout>
 
 <style>
+  .col {
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: calc(var(--nav-h) + 56px) 40px 120px;
+  }
+  .title {
+    font-size: 56px;
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 1.04;
+    color: var(--ink);
+    margin-bottom: 20px;
+  }
   .lede p {
-    max-width: 640px;
-    color: var(--text-secondary);
-    font-size: 18px;
-    line-height: 1.65;
+    max-width: 680px;
+    color: var(--ink2);
+    font-size: 21px;
+    line-height: 1.55;
+    text-wrap: pretty;
   }
 
   .section { margin-top: 96px; }
   .section-title {
-    font-size: 28px;
-    margin-bottom: var(--s4);
+    font-size: 36px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    color: var(--ink);
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 40px;
   }
-  .text { max-width: 640px; }
+  .text { max-width: 680px; }
   .text p {
-    color: var(--text-secondary);
-    font-size: 16px;
-    line-height: 1.75;
+    color: var(--ink2);
+    font-size: 17px;
+    line-height: 1.7;
   }
   .text p + p { margin-top: 16px; }
 
+  .sailing {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 56px;
+    align-items: start;
+  }
   .photos {
     display: grid;
-    grid-template-columns: 1.55fr 1fr 1fr;
-    gap: 16px;
-    margin-top: 48px;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px 16px;
   }
+  .photo-wide { grid-column: 1 / -1; }
   .photo img {
     display: block;
     width: 100%;
-    height: 380px;
+    aspect-ratio: 4 / 3;
     object-fit: cover;
-    border-radius: var(--radius-card);
-    background: var(--bg-card);
+    background: var(--scanbg);
+    outline: 1px solid var(--rule);
+    outline-offset: -1px;
   }
+  .photo-wide img { aspect-ratio: 3 / 2; }
   .photo figcaption {
     margin-top: 10px;
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 13px;
     line-height: 1.45;
   }
@@ -189,20 +220,21 @@ const pieces = [
   .pieces {
     list-style: none;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 56px 28px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 56px 32px;
     margin-top: 48px;
   }
   .piece-image {
     position: relative;
     display: block;
     width: 100%;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 1;
     padding: 0;
     border: 0;
     overflow: hidden;
-    border-radius: var(--radius-card);
-    background: #d9d9d6;
+    background: var(--scanbg);
+    outline: 1px solid var(--rule);
+    outline-offset: -1px;
   }
   .piece-image:not(:disabled) { cursor: pointer; }
   .piece-image:disabled { cursor: default; }
@@ -239,35 +271,38 @@ const pieces = [
     gap: 12px;
     margin-top: 14px;
   }
-  .piece-title { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
-  .piece-year { color: var(--text-muted); font: 12px var(--font-mono); font-variant-numeric: tabular-nums; }
+  .piece-title { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); }
+  .piece-year { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .piece-materials {
     margin-top: 6px;
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 13px;
     line-height: 1.5;
   }
   .piece-note {
     margin-top: 10px;
-    color: var(--text-secondary);
+    color: var(--ink2);
     font-size: 15px;
     line-height: 1.6;
   }
 
   .sign-off {
     margin-top: 96px;
-    color: var(--text-secondary);
-    font-size: 16px;
+    color: var(--ink2);
+    font-size: 17px;
   }
 
   @media (max-width: 900px) {
-    .photos { grid-template-columns: 1fr 1fr; }
-    .photo-wide { grid-column: 1 / -1; }
-    .photo img { height: 320px; }
+    .title { font-size: 44px; }
+    .sailing { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+    .pieces { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   @media (max-width: 600px) {
+    .col { padding: calc(var(--nav-h) + 36px) 20px 72px; }
+    .title { font-size: 36px; }
+    .lede p { font-size: 18px; }
     .section { margin-top: 72px; }
-    .photo img { height: 240px; }
+    .section-title { font-size: 28px; }
     .pieces { grid-template-columns: 1fr; gap: 48px; }
   }
 </style>

@@ -34,7 +34,7 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
     padding: 0 28px 0 12px;
     background: color-mix(in srgb, var(--bg) 88%, transparent);
     backdrop-filter: blur(6px);
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--rule);
   }
 
   .nav-home {
@@ -61,8 +61,8 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: var(--bg-base);
-    color: var(--text-primary);
+    background: var(--bg);
+    color: var(--ink);
     font-size: 13px;
     font-weight: 600;
     letter-spacing: -.03em;
@@ -72,7 +72,7 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
     font-size: 16px;
     font-weight: 600;
     letter-spacing: -0.01em;
-    color: var(--text-primary);
+    color: var(--ink);
   }
 
   .nav-links {
@@ -82,7 +82,7 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
   }
   .nav-link {
     font-size: 14px;
-    color: var(--text-secondary);
+    color: var(--ink2);
   }
   .pause-air {
     padding: 0;
@@ -93,10 +93,10 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
     white-space: nowrap;
   }
   .pause-air:hover, .pause-air[aria-pressed="true"] { color: var(--ink); }
-  .nav-link:hover, .nav-link.active { color: var(--text-primary); }
+  .nav-link:hover, .nav-link.active { color: var(--ink); }
   .nav-link.active {
     text-decoration: underline;
-    text-decoration-color: var(--accent);
+    text-decoration-color: var(--copper);
     text-underline-offset: 6px;
   }
 

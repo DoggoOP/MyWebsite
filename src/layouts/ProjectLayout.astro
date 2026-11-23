@@ -1,6 +1,7 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 
+interface Neighbour { slug: string; title: string; }
 interface Props {
   title: string;
   description: string;
@@ -9,10 +10,12 @@ interface Props {
   links?: { github?: string; paper?: string; demo?: string; };
   animation: string;
   coverImage?: string;
-  coverStyle?: 'photo' | 'diagram';
+  coverStyle?: 'photo' | 'diagram' | 'render';
+  prev?: Neighbour;
+  next?: Neighbour;
 }
 
-const { title, description, tags = [], date, links, animation, coverImage, coverStyle } = Astro.props;
+const { title, description, tags = [], date, links, animation, coverImage, coverStyle, prev, next } = Astro.props;
 const year = date ? new Date(`${date}T00:00:00`).getFullYear() : null;
 const linkList = [
   links?.github && { href: links.github, label: 'GitHub' },
@@ -22,108 +25,182 @@ const linkList = [
 ---
 
 <BaseLayout title={`${title} · Ethan Kong`} description={description} math={true}>
-  <header class="project-hero" data-animation={animation}>
-    <a href="/projects" class="back text-link">Projects</a>
-    <h1 class="display hero-title">{title}</h1>
-    <p class="hero-desc">{description}</p>
-    <p class="hero-meta label">
-      {year && <span>{year}</span>}
-      {tags.length > 0 && <span>{tags.slice(0, 4).join(', ')}</span>}
-      {linkList.map(l => <a class="text-link" href={l.href} target="_blank" rel="noopener">{l.label} ↗</a>)}
-    </p>
-  </header>
+  <main class="col project">
+    <header class="head">
+      <a href="/#projects" class="back">← All projects</a>
+      <h1 class="title">{title}</h1>
+      <p class="lede">{description}</p>
+      {(year || linkList.length > 0) && (
+        <p class="meta">
+          {year && <span>{year}</span>}
+          {linkList.map(l => <a href={l.href} target="_blank" rel="noopener">{l.label} ↗</a>)}
+        </p>
+      )}
+    </header>
 
-  <figure class:list={['hero-figure', coverStyle && `is-${coverStyle}`]}>
-    {animation === 'polymarket'
-      ? <iframe class="hero-dashboard" src="https://polymarketdashboard-production.up.railway.app/" title="Polymarket live dashboard" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
-      : coverImage
-        ? <img class="hero-image" src={coverImage} alt={`${title}`} />
-        : <canvas id="hero-canvas" class="hero-canvas" aria-label={`${title} animated rendering`}></canvas>}
-  </figure>
+    {(animation === 'polymarket' || coverImage) && (
+      <figure class:list={['cover', coverStyle && `is-${coverStyle}`]}>
+        {animation === 'polymarket'
+          ? <iframe class="cover-dashboard" src="https://polymarketdashboard-production.up.railway.app/" title="Polymarket live dashboard" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+          : <img class="cover-image" src={coverImage} alt={title} />}
+      </figure>
+    )}
 
-  <article class="project-content prose"><slot /></article>
+    <div class="body">
+      <aside class="aside" aria-label="Project details">
+        <dl>
+          {year && <><dt>Year</dt><dd>{year}</dd></>}
+          {tags.length > 0 && <><dt>Tools</dt><dd>{tags.join(', ')}</dd></>}
+        </dl>
+      </aside>
+      <article class="project-content prose"><slot /></article>
+    </div>
+
+    {(prev || next) && (
+      <nav class="pager" aria-label="More projects">
+        {prev ? <a class="pager-link" href={`/projects/${prev.slug}`}><span class="pager-label">Previous</span><span class="pager-title">{prev.title}</span></a> : <span></span>}
+        {next ? <a class="pager-link pager-next" href={`/projects/${next.slug}`}><span class="pager-label">Next</span><span class="pager-title">{next.title}</span></a> : <span></span>}
+      </nav>
+    )}
+  </main>
 </BaseLayout>
 
 <style>
-  .project-hero {
-    max-width: 760px;
+  .col {
+    width: 100%;
+    max-width: 1120px;
     margin: 0 auto;
-    padding: calc(var(--nav-h) + var(--s8)) var(--s6) var(--s7);
+    padding-inline: 40px;
   }
+  .project {
+    padding-top: calc(var(--nav-h) + 56px);
+    padding-bottom: 120px;
+  }
+  .head { max-width: 760px; }
   .back {
     display: inline-block;
-    margin-bottom: var(--s6);
-    color: var(--text-muted) !important;
+    margin-bottom: 32px;
+    color: var(--ink2);
     font-size: 14px;
   }
-  .back::before { content: '← '; }
-  .hero-title {
-    font-size: 44px;
-    margin-bottom: var(--s4);
+  .back:hover { color: var(--copper); }
+  .title {
+    font-size: 56px;
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 1.04;
+    color: var(--ink);
+    margin-bottom: 20px;
+    text-wrap: balance;
   }
-  .hero-desc {
-    color: var(--text-secondary);
-    font-size: 19px;
+  .lede {
+    font-size: 21px;
     line-height: 1.55;
+    color: var(--ink2);
+    text-wrap: pretty;
   }
-  .hero-meta {
+  .meta {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--s2) var(--s5);
-    margin-top: var(--s5);
-    color: var(--text-muted);
+    gap: 8px 24px;
+    margin-top: 24px;
+    font-size: 14px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
   }
+  .meta a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--rule);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+  }
+  .meta a:hover { color: var(--copper); text-decoration-color: var(--copper); }
 
-  .hero-figure {
-    max-width: 1080px;
-    height: min(62vh, 600px);
-    margin: var(--s4) auto 0;
-    padding: 0 var(--s6);
+  .cover {
+    margin-top: 48px;
+    padding: 24px;
+    background: var(--scanbg);
+    outline: 1px solid var(--rule);
+    outline-offset: -1px;
   }
-  .hero-image, .hero-canvas, .hero-dashboard {
+  .cover-image {
     display: block;
     width: 100%;
-    height: 100%;
-    border-radius: var(--radius-card);
-    background: var(--bg-card);
+    max-height: 640px;
+    object-fit: contain;
+    margin-inline: auto;
   }
-  .hero-image { object-fit: contain; padding: 24px; }
-  .hero-dashboard { border: 0; }
-  .is-diagram .hero-image { background: #fff; }
-  /* White plots hug their own width instead of a wide white slab. */
-  .is-diagram .hero-image { width: auto; max-width: 100%; margin-inline: auto; }
-  .is-render .hero-image { background: #2c2c2a; }
+  .cover:not(.is-diagram):not(.is-render) { padding: 0; }
+  .cover.is-diagram { background: #fff; }
+  .cover.is-render { background: #2c2c2a; }
+  .cover:has(.cover-dashboard) { padding: 0; }
+  .cover-dashboard {
+    display: block;
+    width: 100%;
+    height: min(70vh, 640px);
+    border: 0;
+  }
+
+  .body {
+    display: grid;
+    grid-template-columns: minmax(0, 680px) minmax(0, 240px);
+    justify-content: space-between;
+    gap: 64px;
+    margin-top: 72px;
+  }
+  .aside {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    position: sticky;
+    top: calc(var(--nav-h) + 24px);
+    padding-top: 16px;
+    border-top: 1px solid var(--ink);
+  }
+  .aside dl {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 10px 0;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .aside dt { color: var(--muted); }
+  .aside dd { color: var(--ink); }
 
   .project-content {
-    max-width: 760px;
-    margin: 0 auto;
-    padding: var(--s8) var(--s6) var(--s9);
-    line-height: 1.7;
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
     font-size: 17px;
-    color: var(--text-secondary);
+    line-height: 1.7;
+    color: var(--ink2);
     counter-reset: fig;
   }
   .project-content > :global(:first-child) { margin-top: 0; }
-  .project-content :global(strong) { color: var(--text-primary); font-weight: 600; }
+  .project-content :global(strong) { color: var(--ink); font-weight: 600; }
 
   .project-content :global(h2) {
-    font-size: 24px;
+    font-size: 36px;
     font-weight: 600;
-    letter-spacing: -0.015em;
-    line-height: 1.2;
-    color: var(--text-primary);
-    margin: var(--s8) 0 var(--s4);
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    color: var(--ink);
+    margin: 72px 0 24px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
   }
   .project-content :global(h3) {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
-    color: var(--text-primary);
+    letter-spacing: -0.015em;
+    color: var(--ink);
     margin: var(--s6) 0 var(--s3);
   }
   .project-content :global(h4) {
     font-size: 17px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--ink);
     margin: var(--s5) 0 var(--s2);
   }
   .project-content :global(p) { margin: var(--s3) 0; }
@@ -133,21 +210,21 @@ const linkList = [
   }
   .project-content :global(li) { margin: var(--s2) 0; }
   .project-content :global(blockquote) {
-    border-left: 1px solid var(--text-muted);
+    border-left: 1px solid var(--muted);
     padding-left: var(--s5);
     margin: var(--s5) 0;
-    color: var(--text-muted);
+    color: var(--muted);
   }
   .project-content :global(code) {
     font-family: var(--font-mono);
     font-size: 13px;
-    background: var(--bg-card);
+    background: var(--scanbg);
     padding: 2px 5px;
-    color: var(--text-primary);
+    color: var(--ink);
   }
   .project-content :global(pre) {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
+    background: var(--surface);
+    border: 1px solid var(--rule);
     padding: var(--s5);
     overflow-x: auto;
     margin: var(--s5) 0;
@@ -155,7 +232,7 @@ const linkList = [
   .project-content :global(pre code) {
     background: none;
     padding: 0;
-    color: var(--text-primary);
+    color: var(--ink);
   }
   .project-content :global(img) {
     width: 100%;
@@ -168,7 +245,7 @@ const linkList = [
   .project-content :global(figure img) {
     display: block;
     margin: 0;
-    border: 1px solid var(--border-subtle);
+    border: 1px solid var(--rule);
   }
   .project-content :global(figure video) {
     display: block;
@@ -177,22 +254,20 @@ const linkList = [
     max-width: 100%;
     max-height: 70vh;
     margin-inline: auto;
-    background: #000;
-    border: 1px solid var(--border-subtle);
+    background: var(--scanbg);
+    border: 1px solid var(--rule);
   }
-  /* Captions are numbered like figures in a report. */
   .project-content :global(figcaption) {
     margin-top: var(--s2);
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 13px;
     line-height: 1.5;
   }
   .project-content :global(figure > figcaption)::before {
     content: 'Fig. ' counter(fig);
     margin-right: var(--s2);
-    color: var(--text-secondary);
-    font-family: var(--font-mono);
-    font-size: 12px;
+    color: var(--ink2);
+    font-variant-numeric: tabular-nums;
   }
   .project-content :global(table) {
     display: block;
@@ -206,24 +281,24 @@ const linkList = [
   }
   .project-content :global(th), .project-content :global(td) {
     padding: var(--s2) var(--s3);
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--rule);
     white-space: nowrap;
   }
   .project-content :global(th) {
-    color: var(--text-primary);
+    color: var(--ink);
     font-weight: 600;
     text-align: left;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid var(--rule);
   }
   .project-content :global(tbody tr:hover) {
-    background: var(--bg-card);
+    background: var(--scanbg);
   }
   .project-content :global(.study-slides) {
     display: flex;
     gap: 12px;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
-    scrollbar-color: var(--border-accent) var(--bg-card);
+    scrollbar-color: var(--muted) var(--scanbg);
     margin: var(--s6) 0 var(--s2);
     padding-bottom: var(--s3);
   }
@@ -232,16 +307,16 @@ const linkList = [
     flex: 0 0 100%;
     min-height: 320px;
     padding: var(--s6);
-    border: 1px solid var(--border-subtle);
-    background: var(--bg-card);
+    border: 1px solid var(--rule);
+    background: var(--scanbg);
     scroll-snap-align: start;
   }
   .project-content :global(.study-slide-number) {
     display: block;
-    color: var(--accent);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: .12em;
+    color: var(--copper);
+    font-size: 12px;
+    letter-spacing: .08em;
+    font-variant-numeric: tabular-nums;
   }
   .project-content :global(.study-slide h3) {
     margin: 24px 0 12px;
@@ -253,7 +328,7 @@ const linkList = [
     margin: 12px 0;
   }
   .project-content :global(.study-slide-note) {
-    color: var(--accent);
+    color: var(--copper);
     font-size: 13px;
   }
   .project-content :global(.study-slide-metrics) {
@@ -267,17 +342,17 @@ const linkList = [
     gap: 2px;
   }
   .project-content :global(.study-slide-metrics strong) {
-    color: var(--text-primary);
+    color: var(--ink);
     font-size: 31px;
     line-height: 1;
     font-weight: 500;
   }
   .project-content :global(.study-slide-metrics span) {
-    color: var(--accent);
+    color: var(--copper);
     font-size: 12px;
   }
   .project-content :global(.study-scroll-hint) {
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 12px;
     margin: 0 0 32px;
   }
@@ -286,34 +361,51 @@ const linkList = [
   }
   .project-content :global(hr) {
     border: none;
-    border-top: 1px solid var(--border-subtle);
+    border-top: 1px solid var(--rule);
     margin: var(--s7) 0;
   }
+
+  .pager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-top: 96px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+  }
+  .pager-link { display: block; }
+  .pager-next { text-align: right; grid-column: 2; }
+  .pager-label { display: block; font-size: 13px; color: var(--muted); }
+  .pager-title {
+    display: block;
+    margin-top: 4px;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    color: var(--ink);
+  }
+  .pager-link:hover .pager-title {
+    text-decoration: underline;
+    text-decoration-color: var(--copper);
+    text-underline-offset: 4px;
+  }
+
+  @media (max-width: 900px) {
+    .title { font-size: 44px; }
+    .body { grid-template-columns: minmax(0, 1fr); gap: 40px; margin-top: 56px; }
+    .aside { grid-column: 1; grid-row: 1; position: static; max-width: 680px; }
+    .project-content { grid-column: 1; grid-row: 2; }
+  }
   @media (max-width: 600px) {
-    .project-hero { padding: calc(var(--nav-h) + 36px) 20px 28px; }
-    .hero-title { font-size: 34px; }
-    .hero-desc { font-size: 17px; }
-    .hero-figure { height: 300px; padding: 0 20px; }
-    .hero-image { padding: 14px; }
-    .project-content { padding: var(--s7) 20px var(--s8); font-size: 16px; }
+    .col { padding-inline: 20px; }
+    .project { padding-top: calc(var(--nav-h) + 36px); padding-bottom: 72px; }
+    .title { font-size: 36px; }
+    .lede { font-size: 18px; }
+    .cover { margin-top: 32px; padding: 14px; }
+    .project-content { font-size: 16px; }
+    .project-content :global(h2) { font-size: 28px; margin-top: 56px; }
+    .pager { gap: 20px; margin-top: 64px; }
+    .pager-title { font-size: 17px; }
   }
 </style>
-<script>
-  import { initHeroAnimation } from '../scripts/heroAnimations.js';
-
-  let cancelAnim: (() => void) | null = null;
-
-  function init() {
-    if (cancelAnim) { cancelAnim(); cancelAnim = null; }
-    const hero = document.querySelector('[data-animation]') as HTMLElement | null;
-    const canvas = document.getElementById('hero-canvas') as HTMLCanvasElement | null;
-    if (hero && canvas) {
-      cancelAnim = initHeroAnimation(hero.dataset.animation!, canvas);
-    }
-  }
-
-  document.addEventListener('astro:page-load', init);
-  document.addEventListener('astro:before-preparation', () => {
-    if (cancelAnim) { cancelAnim(); cancelAnim = null; }
-  });
-</script>

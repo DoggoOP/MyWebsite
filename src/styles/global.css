@@ -12,20 +12,6 @@
   --copper: #c2683a;
   --steel: #3d6f8c;
 
-  /* Old token names stay as aliases until the last page stops using them. */
-  --bg-base: var(--bg);
-  --bg-surface: var(--surface);
-  --bg-card: var(--scanbg);
-  --accent: var(--copper);
-  --accent-cool: var(--steel);
-  --accent-cyan: var(--steel);
-  --text-primary: var(--ink);
-  --text-secondary: var(--ink2);
-  --text-muted: var(--muted);
-  --border-subtle: var(--rule);
-  --border-accent: var(--muted);
-  --radius-card: 0;
-  --radius-btn: 0;
   --font-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --nav-h: 56px;
@@ -66,24 +52,24 @@ body { min-height: 100vh; }
 ::selection { background: color-mix(in srgb, var(--copper) 33%, transparent); }
 
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg-base); }
-::-webkit-scrollbar-thumb { background: var(--border-accent); }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--muted); }
 
 a { color: inherit; text-decoration: none; }
 
 /* Inline prose links: underlined text, never buttons. State changes are instant. */
 .prose a, a.text-link {
-  color: var(--text-primary);
+  color: var(--ink);
   text-decoration: underline;
-  text-decoration-color: var(--border-accent);
+  text-decoration-color: var(--rule);
   text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
+  text-underline-offset: 4px;
 }
 .prose a:hover, a.text-link:hover {
-  color: var(--accent);
-  text-decoration-color: var(--accent);
+  color: var(--copper);
+  text-decoration-color: var(--copper);
 }
-:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+:focus-visible { outline: 1px solid var(--copper); outline-offset: 2px; }
 
 button {
   cursor: pointer;
@@ -118,7 +104,7 @@ button {
 }
 .page-lede {
   max-width: 600px;
-  color: var(--text-secondary);
+  color: var(--ink2);
   font-size: 18px;
   line-height: 1.6;
 }
