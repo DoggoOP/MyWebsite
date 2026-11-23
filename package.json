@@ -8,7 +8,8 @@
     "prebuild": "node scripts/prepare-home-scan.mjs",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "vitest run"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.13",
@@ -22,5 +23,8 @@
     "rehype-katex": "^7.0.1",
     "remark-math": "^6.0.0",
     "three": "^0.183.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.12"
   }
 }
