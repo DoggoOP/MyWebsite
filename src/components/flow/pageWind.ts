@@ -50,8 +50,10 @@ const CPU_MAX_TEXTURE = 1 << 15;
 const STAT_FRAMES = 120;
 /** The GPU draws contour lines at viewport resolution, capped at this many device px per CSS px. */
 const MAX_PIXEL_RATIO = 1.5;
+/** A software-rendered or blocklisted GPU fails the caveat check and falls back to the CPU solver. */
 const GL_ATTRS: WebGLContextAttributes = {
   premultipliedAlpha: false, alpha: true, antialias: false, depth: false, stencil: false,
+  failIfMajorPerformanceCaveat: true, powerPreference: 'low-power',
 };
 
 const running = new Set<object>();
@@ -97,6 +99,7 @@ export function startPageWind(opts: PageWindOptions): () => void {
   let lost = false;
   let raf = 0, layoutRaf = 0, drawRaf = 0;
   let lastFrame = -Infinity;
+  let drawnX = NaN, drawnY = NaN;
   let drag: { id: number; x: number; y: number } | null = null;
   let statFrames = 0, statMs = 0;
   let styleKey = '';
@@ -145,6 +148,12 @@ export function startPageWind(opts: PageWindOptions): () => void {
       solver = create(backend, grid.cols, grid.rows);
     } catch (err) {
       if (backend === 'cpu') { console.warn('[wind] no solver', err); return; }
+      if (gl?.isContextLost()) {
+        // A lost context, not a missing feature: webglcontextrestored rebuilds on the GPU.
+        console.warn('[wind] GL context lost while building, waiting for restore', err);
+        lost = true;
+        return;
+      }
       console.warn('[wind] GPU solver failed, using the CPU', err);
       useCpu();
       grid = sizeGrid();
@@ -161,6 +170,8 @@ export function startPageWind(opts: PageWindOptions): () => void {
 
   function draw() {
     if (!solver || lost) return;
+    drawnX = scrollX;
+    drawnY = scrollY;
     if (backend === 'cpu') {
       // Lattice-resolution fills, scaled up by CSS and shifted by the sub-cell scroll remainder.
       const { topRow, viewRows, offsetPx } = viewWindow(scrollY, innerHeight, grid.cell);
@@ -205,7 +216,11 @@ export function startPageWind(opts: PageWindOptions): () => void {
     raf = 0;
     if (!canRun()) { syncLoop(); return; }
     raf = requestAnimationFrame(frame);
-    if (phone() && now - lastFrame < PHONE_FRAME_MS) return;
+    if (phone() && now - lastFrame < PHONE_FRAME_MS) {
+      // The sim steps at 30 fps, but the fixed canvas follows the page scroll every frame.
+      if (scrollX !== drawnX || scrollY !== drawnY) draw();
+      return;
+    }
     lastFrame = now;
     const t0 = performance.now();
     solver!.step(SUBSTEPS);
@@ -250,13 +265,15 @@ export function startPageWind(opts: PageWindOptions): () => void {
     const g = sizeGrid();
     const oldKey = sailsKey;
     measureSails();
+    // Ask first, so a rebuild masks and seeds the scan where the circle sits now, not where the
+    // circle sat before the layout moved.
+    requestScan();
     if (!solver || g.cols !== grid.cols || g.rows !== grid.rows || g.cell !== grid.cell) {
       if (!lost) build();
       syncLoop();
     } else if (sailsKey !== oldKey) {
       solver.setMask(mask());
     }
-    requestScan();
     scheduleDraw();
   }
 
@@ -267,7 +284,7 @@ export function startPageWind(opts: PageWindOptions): () => void {
 
   function updateButton() {
     if (!pauseButton) return;
-    pauseButton.setAttribute('aria-pressed', String(paused));
+    pauseButton.toggleAttribute('data-paused', paused);
     pauseButton.textContent = paused ? 'Play air' : 'Pause air';
   }
 
@@ -298,6 +315,7 @@ export function startPageWind(opts: PageWindOptions): () => void {
 
   function onPointerMove(e: PointerEvent) {
     if (!drag || e.pointerId !== drag.id) return;
+    if (e.buttons === 0) { drag = null; return; } // the release landed outside the window
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     drag.x = e.clientX;
     drag.y = e.clientY;
@@ -373,6 +391,8 @@ export function startPageWind(opts: PageWindOptions): () => void {
     canvas.removeEventListener('webglcontextrestored', onRestored);
     solver?.dispose?.();
     solver = null;
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    gl = null;
     painter = null;
     drag = null;
     if (canvas !== original) canvas.replaceWith(original);

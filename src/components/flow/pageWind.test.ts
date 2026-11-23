@@ -2,7 +2,7 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { startPageWind, activeLoops, type SolverLike } from './pageWind';
 
-type Fake = SolverLike & { calls: string[]; steps: number; masks: Uint8Array[]; forces: number[][]; disposed: boolean };
+type Fake = SolverLike & { calls: string[]; steps: number; masks: Uint8Array[]; forces: number[][]; renders: number[]; disposed: boolean };
 
 let frames = new Map<number, FrameRequestCallback>();
 let nextId = 1;
@@ -19,13 +19,14 @@ function flush(n = 1) {
 
 function fake(cols: number, rows: number): Fake {
   const s: Fake = {
-    cols, rows, calls: [], steps: 0, masks: [], forces: [], disposed: false,
+    cols, rows, calls: [], steps: 0, masks: [], forces: [], renders: [], disposed: false,
     setMask(m) { s.calls.push('setMask'); s.masks.push(m.slice()); },
     initUniform() { s.calls.push('initUniform'); },
     seedWake() { s.calls.push('seedWake'); },
     addForce(col, row, fx, fy, r) { s.forces.push([col, row, fx, fy, r]); },
     step(n) { s.steps += n; },
     vorticity: () => new Float32Array(cols * rows),
+    render(o) { s.renders.push(o.scrollY); },
     dispose() { s.disposed = true; },
   };
   solvers.push(s);
@@ -36,7 +37,7 @@ function setup() {
   document.body.innerHTML = `
     <canvas data-wind></canvas>
     <p id="text">words</p><a id="link" href="#">link</a>
-    <button id="pause" aria-pressed="false">Pause air</button>
+    <button id="pause">Pause air</button>
     <div data-scan id="scan"></div>`;
   const q = <T extends Element>(s: string) => document.querySelector(s) as T;
   return {
@@ -97,19 +98,19 @@ test('the start state seeds a uniform field with a mask', () => {
   stop();
 });
 
-test('Pause toggles the label, aria-pressed and the loop', () => {
+test('Pause swaps the label and toggles the loop, with no aria-pressed', () => {
   const opts = setup();
   const stop = startPageWind(opts);
   const btn = opts.pauseButton;
   btn.click();
-  expect(btn.getAttribute('aria-pressed')).toBe('true');
+  expect(btn.hasAttribute('aria-pressed')).toBe(false);
   expect(btn.textContent).toBe('Play air');
   expect(activeLoops()).toBe(0);
   const before = solvers[0].steps;
   flush(3);
   expect(solvers[0].steps).toBe(before);
   btn.click();
-  expect(btn.getAttribute('aria-pressed')).toBe('false');
+  expect(btn.hasAttribute('aria-pressed')).toBe(false);
   expect(btn.textContent).toBe('Pause air');
   expect(activeLoops()).toBe(1);
   stop();
@@ -153,8 +154,8 @@ test('a scan silhouette merges into the mask', () => {
   expect(s.masks.length).toBe(count);
 });
 
-function pointer(type: string, target: Element, init: { pointerType: string; x: number; y: number }) {
-  const e = new MouseEvent(type, { bubbles: true, clientX: init.x, clientY: init.y, buttons: 1 });
+function pointer(type: string, target: Element, init: { pointerType: string; x: number; y: number; buttons?: number }) {
+  const e = new MouseEvent(type, { bubbles: true, clientX: init.x, clientY: init.y, buttons: init.buttons ?? 1 });
   Object.defineProperty(e, 'pointerType', { value: init.pointerType });
   Object.defineProperty(e, 'pointerId', { value: 1 });
   target.dispatchEvent(e);
@@ -179,6 +180,26 @@ test('the wind asks the scan for a silhouette at start and after each relayout',
   window.dispatchEvent(new Event('resize'));
   flush();
   expect(asks).toBe(2);
+});
+
+test('a relayout that rebuilds the lattice masks the scan where the circle sits now', () => {
+  const opts = setup();
+  let top = 200;
+  opts.scan.element.addEventListener('scan-silhouette-request', () => {
+    const pts: number[] = [];
+    for (let y = top; y < top + 60; y++) for (let x = 400; x < 460; x++) pts.push(x, y);
+    opts.scan.element.dispatchEvent(new CustomEvent('scan-silhouette', { detail: new Float32Array(pts) }));
+  });
+  const stop = startPageWind(opts);
+  top = 400;
+  vi.stubGlobal('innerHeight', innerHeight + 300); // a taller page: a new lattice
+  window.dispatchEvent(new Event('resize'));
+  flush();
+  const s = solvers.at(-1)!;
+  expect(solvers.length).toBe(2);
+  expect(s.masks[0][86 * s.cols + 86]).toBe(1); // (430, 430) px, the circle's new spot
+  expect(s.masks[0][46 * s.cols + 86]).toBe(0); // (430, 230) px, the old spot
+  stop();
 });
 
 test('a host around a late-mounted scan hears the silhouette and forwards requests', () => {
@@ -220,6 +241,17 @@ test('mouse drags on text stir the air; touch and drags from links do not', () =
   expect(s.forces.length).toBe(1);
 });
 
+test('a move with no buttons down ends a drag whose release the page missed', () => {
+  const stop = startPageWind(setup());
+  const s = solvers[0];
+  const text = document.getElementById('text')!;
+  pointer('pointerdown', text, { pointerType: 'mouse', x: 100, y: 100 });
+  pointer('pointermove', text, { pointerType: 'mouse', x: 118, y: 100, buttons: 0 });
+  pointer('pointermove', text, { pointerType: 'mouse', x: 136, y: 100 });
+  expect(s.forces).toEqual([]);
+  stop();
+});
+
 test('reduced motion runs 200 steps, draws once and waits on Play', () => {
   media['(prefers-reduced-motion: reduce)'] = true;
   const opts = setup();
@@ -232,12 +264,92 @@ test('reduced motion runs 200 steps, draws once and waits on Play', () => {
   stop();
 });
 
-function withGl() {
-  const gl = { getExtension: (name: string) => (name === 'EXT_color_buffer_float' ? {} : null), getParameter: () => 4096 };
+function withGl(state = { lost: false }) {
+  const loseContext = vi.fn();
+  const gl = {
+    getExtension: (name: string) => (name === 'EXT_color_buffer_float' ? {} : name === 'WEBGL_lose_context' ? { loseContext } : null),
+    getParameter: () => 4096,
+    isContextLost: () => state.lost,
+  };
   vi.mocked(HTMLCanvasElement.prototype.getContext).mockImplementation(
     ((type: string) => (type === 'webgl2' ? gl : null)) as never,
   );
+  return { loseContext };
 }
+
+test('the GL context asks for a low-power GPU and refuses a software one', () => {
+  withGl();
+  const stop = startPageWind(setup());
+  const attrs = vi.mocked(HTMLCanvasElement.prototype.getContext).mock.calls[0][1] as WebGLContextAttributes;
+  expect(attrs).toMatchObject({
+    failIfMajorPerformanceCaveat: true, powerPreference: 'low-power',
+    premultipliedAlpha: false, alpha: true, antialias: false,
+  });
+  stop();
+});
+
+test('stop releases the GL context after disposing the solver', () => {
+  const { loseContext } = withGl();
+  const stop = startPageWind(setup());
+  expect(loseContext).not.toHaveBeenCalled();
+  stop();
+  expect(solvers[0].disposed).toBe(true);
+  expect(loseContext).toHaveBeenCalledTimes(1);
+  stop();
+  expect(loseContext).toHaveBeenCalledTimes(1);
+});
+
+test('on a phone, a scroll during a skipped 30 fps frame redraws without stepping', () => {
+  media['(pointer: coarse)'] = true;
+  withGl();
+  let now = 1000;
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
+  const stop = startPageWind(setup());
+  const s = solvers[0];
+  flush(); // steps and draws at t = 1000
+  expect(s.steps).toBe(6);
+  const draws = s.renders.length;
+  now += 8; // inside the 30 fps window: the frame skips the step
+  flush();
+  expect(s.steps).toBe(6);
+  expect(s.renders.length).toBe(draws); // no scroll, no redraw
+  vi.stubGlobal('scrollY', 240);
+  now += 8;
+  flush();
+  expect(s.steps).toBe(6);
+  expect(s.renders.length).toBe(draws + 1);
+  expect(s.renders.at(-1)).toBe(240);
+  now += 40; // past the window: a full frame steps again
+  flush();
+  expect(s.steps).toBe(12);
+  stop();
+});
+
+test('a GPU solver that throws on a lost context waits for restore instead of using the CPU', () => {
+  const state = { lost: true };
+  withGl(state);
+  const opts = setup();
+  const backends: string[] = [];
+  let fail = true;
+  const stop = startPageWind({
+    ...opts,
+    createSolver: (b, cols, rows) => {
+      backends.push(b);
+      if (fail) throw new Error('context lost mid-build');
+      return fake(cols, rows);
+    },
+  });
+  expect(backends).toEqual(['f32']);
+  expect(opts.canvas.isConnected).toBe(true);
+  expect(activeLoops()).toBe(0);
+  state.lost = false;
+  fail = false;
+  opts.canvas.dispatchEvent(new Event('webglcontextrestored'));
+  expect(backends).toEqual(['f32', 'f32']);
+  expect(solvers.length).toBe(1);
+  expect(activeLoops()).toBe(1);
+  stop();
+});
 
 test('a GPU solver that throws falls back to the CPU on a fresh canvas, restored on stop', () => {
   withGl();

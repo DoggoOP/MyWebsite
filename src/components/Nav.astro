@@ -14,7 +14,7 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
     <span class="nav-name">Ethan Kong</span>
   </a>
   <div class="nav-links">
-    {pauseAir && <button type="button" class="pause-air" data-pause-air aria-pressed="false">Pause air</button>}
+    {pauseAir && <button type="button" class="pause-air" data-pause-air>Pause air</button>}
     <a href="/#projects" class="nav-link">Projects</a>
     <a href="/#classes" class="nav-link">Classes</a>
     <a href="/about" class:list={['nav-link', { active: isActive('/about') }]}>About</a>
@@ -92,7 +92,7 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
     color: var(--muted);
     white-space: nowrap;
   }
-  .pause-air:hover, .pause-air[aria-pressed="true"] { color: var(--ink); }
+  .pause-air:hover, .pause-air[data-paused] { color: var(--ink); }
   .nav-link:hover, .nav-link.active { color: var(--ink); }
   .nav-link.active {
     text-decoration: underline;
