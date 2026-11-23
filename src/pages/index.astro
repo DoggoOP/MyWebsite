@@ -1,51 +1,122 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PointCloudViewer from '../components/PointCloudViewer.tsx';
+import ProjectCard from '../components/ProjectCard.astro';
+import ClassesChart from '../components/ClassesChart.astro';
+import { CLASSES } from '../data/classes';
+import { SAIL_VIEWBOX, sailPolylines, type Pt } from '../lib/sails';
+
+const all = await getCollection('projects', ({ id }) => !id.startsWith('_'));
+const projects = all.sort((a, b) => a.data.order - b.data.order);
+const featured = projects.slice(0, 4);
+const rest = projects.slice(4);
+
+const units = CLASSES.reduce((sum, c) => sum + c.units, 0);
+
+const sails = sailPolylines();
+const points = (line: Pt[]) => line.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
+const viewBox = `${SAIL_VIEWBOX.x} ${SAIL_VIEWBOX.y} ${SAIL_VIEWBOX.w} ${SAIL_VIEWBOX.h}`;
+const [jibX, jibY] = sails.jib[0];
+
+const year = new Date().getFullYear();
 ---
 
-<BaseLayout title="Ethan Kong">
+<BaseLayout title="Ethan Kong" pauseAir>
   <div id="hero-load-status" class="hero-load-status" role="status" aria-live="polite">
     <progress id="hero-load-progress" value="0" max="100" aria-label="3D scan loading progress"></progress>
     <span class="visually-hidden">Loading 3D scan <span id="hero-load-percent">0%</span></span>
   </div>
-  <canvas id="flow-canvas" class="flow-canvas" aria-hidden="true"></canvas>
-  <main class="landing">
-    <section class="landing-viewer" aria-label="3D scan of Ethan in a simulated wind tunnel">
-      <PointCloudViewer src="/assets/3dImage-home.lssnap" axesSrc="/assets/3dImage-home-surfels.bin" filter={false} airflow={true} client:only="react" />
-    </section>
+  <canvas class="wind" data-wind aria-hidden="true"></canvas>
 
-    <section class="landing-bio">
-      <!-- The circle is also the cylinder the sim's air flows around. -->
-      <div class="bio" id="bio-card">
-        <div class="bio-inner">
-          <h1 class="bio-name">Hi, I'm Ethan</h1>
-          <div class="prose bio-text">
+  <div class="home" data-wind-root>
+    <main>
+      <section class="col hero">
+        <div class="hero-text">
+          <h1 class="hero-name">Hi, I'm Ethan</h1>
+          <div class="prose hero-bio">
             <p>
               I grew up in Hong Kong and chose to study Aero/Astro at Stanford because
-              I wanted a balanced education between structures, controls, electronics and code</span>.<span class="wide-only">
+              I wanted a balanced education between structures, controls, electronics and code.
               I'm currently building <a href="/projects/lattice">Lattice</a>, 3D capture for robotics,
               work with the <a href="/projects/solar-car">Solar Car Project</a> and the
-              <a href="/projects/ion-thruster">Plasma Physics Lab</a>.</span>
+              <a href="/projects/ion-thruster">Plasma Physics Lab</a>.
             </p>
             <p>
               Growing up, I <a class="peek" href="/about#sailing">sailed for the Hong Kong national team,<span class="peek-card" aria-hidden="true"><img src="/assets/about/peek-sailing.jpg" alt="" width="480" height="311" /></span></a>
               which is how I got into fluid dynamics. The air here is a
-              <span class="nowrap">lattice-Boltzmann</span> sim<span class="wide-only">, the
-              same method I first used <a href="/projects/sailing-rl">to model a sail</a></span>.
-              <span class="wide-only"> I also enjoy
-              <a class="peek" href="/about#ceramics">making pottery<span class="peek-card" aria-hidden="true"><img src="/assets/about/peek-pottery.jpg" alt="" width="480" height="313" /></span></a>.</span>
+              <span class="nowrap">lattice-Boltzmann</span> sim, the
+              same method I first used <a href="/projects/sailing-rl">to model a sail</a>.
+              I also enjoy
+              <a class="peek" href="/about#ceramics">making pottery<span class="peek-card" aria-hidden="true"><img src="/assets/about/peek-pottery.jpg" alt="" width="480" height="313" /></span></a>.
             </p>
           </div>
-          <nav class="bio-links" aria-label="Contact">
+          <nav class="hero-links" aria-label="Contact">
             <a class="text-link" href="mailto:ethank07@stanford.edu">Email</a>
             <a class="text-link" href="https://github.com/DoggoOP" target="_blank" rel="noopener">GitHub</a>
             <a class="text-link" href="https://www.linkedin.com/in/ethank07/" target="_blank" rel="noopener">LinkedIn</a>
             <a class="text-link" href="/assets/resume.pdf" target="_blank" rel="noopener">Resume</a>
           </nav>
         </div>
+
+        <div class="hero-scan" data-scan-host>
+          <div class="scan-note" aria-hidden="true">
+            <p class="hand">that's me, in 3D!<br /><span class="hand-sub">drag to spin me around</span></p>
+            <svg width="74" height="70" viewBox="0 0 74 70">
+              <path d="M4 8 C 30 2, 58 14, 62 50" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <path d="M52 42 L62 54 L68 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+          <PointCloudViewer src="/assets/3dImage-home.lssnap" axesSrc="/assets/3dImage-home-surfels.bin" filter={false} circle intro client:only="react" />
+        </div>
+      </section>
+
+      <section id="projects" class="col section">
+        <h2 class="section-head">Projects <span class="section-count">{projects.length} projects</span></h2>
+        <ul class="cards cards-featured">
+          {featured.map((p) => <li><ProjectCard project={p} featured /></li>)}
+        </ul>
+        <ul class="cards cards-rest">
+          {rest.map((p) => <li><ProjectCard project={p} /></li>)}
+        </ul>
+      </section>
+
+      <div class="col sails-wrap">
+        <svg class="sails" data-sails viewBox={viewBox} aria-hidden="true">
+          {[sails.main, sails.jib].map((line) => (
+            <polyline
+              points={points(line)}
+              fill="none"
+              stroke="var(--ink)"
+              stroke-width="3.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              vector-effect="non-scaling-stroke"
+            />
+          ))}
+          <circle cx="0" cy="0" r="4" fill="var(--ink)" />
+          <circle cx={jibX.toFixed(2)} cy={jibY.toFixed(2)} r="3" fill="var(--ink)" />
+        </svg>
       </div>
-    </section>
-  </main>
+
+      <section id="classes" class="col section">
+        <h2 class="section-head">Classes <span class="section-count">{units} units</span></h2>
+        <ClassesChart />
+      </section>
+    </main>
+
+    <footer class="col">
+      <div class="footer">
+        <nav class="footer-links" aria-label="Footer contact">
+          <a class="text-link" href="mailto:ethank07@stanford.edu">Email</a>
+          <a class="text-link" href="https://github.com/DoggoOP" target="_blank" rel="noopener">GitHub</a>
+          <a class="text-link" href="https://www.linkedin.com/in/ethank07/" target="_blank" rel="noopener">LinkedIn</a>
+          <a class="text-link" href="/assets/resume.pdf" target="_blank" rel="noopener">Resume</a>
+        </nav>
+        <p class="copyright">© {year} Ethan Kong</p>
+      </div>
+    </footer>
+  </div>
 </BaseLayout>
 
 <style>
@@ -70,79 +141,65 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     background: transparent;
   }
   .hero-load-status progress::-webkit-progress-bar { background: transparent; }
-  .hero-load-status progress::-webkit-progress-value { background: var(--accent); }
-  .hero-load-status progress::-moz-progress-bar { background: var(--accent); }
+  .hero-load-status progress::-webkit-progress-value { background: var(--copper); }
+  .hero-load-status progress::-moz-progress-bar { background: var(--copper); }
 
-  .flow-canvas {
+  /* Fixed, so the canvas size never feeds the page height the lattice is sized from. */
+  .wind {
     position: fixed;
-    inset: 0;
+    left: 0;
+    top: 0;
+    z-index: 0;
+    display: block;
+    pointer-events: none;
+  }
+
+  .home {
+    position: relative;
     z-index: 1;
+  }
+
+  .col {
     width: 100%;
-    height: 100%;
-    pointer-events: none;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding-inline: 40px;
   }
 
-  .landing {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    height: 100vh;
-    height: 100dvh;
-    padding-top: var(--nav-h);
-    pointer-events: none;
-  }
-
-  .landing-viewer {
-    flex: 1;
-    height: 100%;
-    position: relative;
-    z-index: 3;
-    pointer-events: auto;
-    order: 1;
-  }
-
-  .landing-bio {
-    flex: 0 0 50%;
-    display: flex;
-    position: relative;
-    z-index: 3;
-    align-items: center;
-    justify-content: flex-end;
-    padding: 32px 0 32px 48px;
-    order: 0;
-  }
-
-  /* Everything inside scales with the circle, so the text always fits it. */
-  .bio {
-    container: bio / inline-size;
+  /* Hero */
+  .hero {
     display: grid;
-    place-items: center;
-    width: min(580px, 44vw, calc(100dvh - var(--nav-h) - 64px));
-    aspect-ratio: 1;
-    border-radius: 50%;
-    background: var(--bg-base);
-    text-align: center;
-    pointer-events: auto;
+    grid-template-columns: minmax(0, 520px) minmax(0, 420px);
+    justify-content: space-between;
+    align-items: center;
+    gap: 48px;
+    padding-top: calc(var(--nav-h) + 56px);
+    padding-bottom: 140px;
   }
-  .bio-inner { width: 72%; }
-
-  .bio-name {
-    font-size: clamp(22px, 5.6cqi, 34px);
-    letter-spacing: -0.02em;
+  .hero-name {
+    font-size: 44px;
     font-weight: 600;
+    letter-spacing: -0.025em;
     line-height: 1.1;
-    color: var(--text-primary);
-    margin-bottom: 3.6cqi;
+    color: var(--ink);
+    margin-bottom: 24px;
   }
-
-  .bio-text p {
-    font-size: clamp(12.5px, 2.6cqi, 15.5px);
+  .hero-bio p {
+    font-size: 17px;
     line-height: 1.65;
-    color: var(--text-secondary);
+    color: var(--ink2);
     text-wrap: pretty;
   }
+  .hero-bio p + p { margin-top: 16px; }
+  .nowrap { white-space: nowrap; }
+  .hero-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-top: 28px;
+    font-size: 15px;
+  }
 
-  /* Hover previews for the personal lines. */
   .peek { position: relative; }
   .peek-card {
     position: absolute;
@@ -151,7 +208,7 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
     z-index: 5;
     width: 220px;
     overflow: hidden;
-    border: 1px solid var(--text-muted);
+    border: 1px solid var(--muted);
     visibility: hidden;
     transform: translateX(-50%);
     pointer-events: none;
@@ -160,28 +217,164 @@ import PointCloudViewer from '../components/PointCloudViewer.tsx';
   .peek:hover .peek-card, .peek:focus-visible .peek-card { visibility: visible; }
   @media (hover: none) { .peek-card { display: none; } }
 
-  .bio-text p + p { margin-top: 2.4cqi; }
-  .nowrap { white-space: nowrap; }
+  /* Square before the scan island mounts, so /#projects lands without a layout shift. */
+  .hero-scan {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 1;
+  }
+  .scan-note {
+    position: absolute;
+    left: -96px;
+    top: -58px;
+    z-index: 2;
+    display: flex;
+    gap: 2px;
+    transform: rotate(-5deg);
+    pointer-events: none;
+  }
+  .hand {
+    margin: 0;
+    font-family: Caveat, 'Comic Sans MS', cursive;
+    font-size: 25px;
+    line-height: 1.05;
+    white-space: nowrap;
+    color: var(--ink2);
+  }
+  .hand-sub { font-size: 21px; color: var(--copper); }
+  .scan-note svg { flex: none; margin-top: 22px; color: var(--ink2); }
 
-  .bio-links {
+  /* Sections */
+  .section { scroll-margin-top: calc(var(--nav-h) + 24px); }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 14px;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 36px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+  .section-count {
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--muted);
+  }
+
+  .cards {
+    list-style: none;
+    display: grid;
+  }
+  .cards-featured {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 72px;
+  }
+  .cards-rest {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 64px 56px;
+    margin-top: 72px;
+  }
+
+  .sails-wrap {
+    padding-top: 160px;
+    padding-bottom: 150px;
+  }
+  .sails {
+    display: block;
+    width: 100%;
+    max-width: 460px;
+    height: auto;
+    margin: 0 auto;
+    overflow: visible;
+  }
+
+  .footer {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
-    gap: 4cqi;
-    margin-top: 4.5cqi;
-    font-size: clamp(12px, 2.3cqi, 14px);
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px 24px;
+    margin-top: 140px;
+    padding-top: 28px;
+    padding-bottom: 56px;
+    border-top: 1px solid var(--rule);
+  }
+  .footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    font-size: 15px;
+  }
+  .copyright { font-size: 13px; color: var(--muted); }
+
+  @media (max-width: 960px) {
+    .hero {
+      grid-template-columns: minmax(0, 1fr);
+      justify-items: center;
+      gap: 72px;
+      padding-bottom: 120px;
+    }
+    .hero-text { max-width: 560px; }
+    .cards-featured, .cards-rest { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px 40px; }
+    .cards-rest { margin-top: 56px; }
   }
 
-  /* A small circle keeps only the core sentences. */
-  @container bio (max-width: 500px) {
-    .wide-only { display: none; }
-    .bio-inner { width: 76%; }
-  }
-
-  @media (max-width: 900px) {
-    .landing { flex-direction: column; height: auto; min-height: 100vh; }
-    .landing-viewer { order: 1; flex: 0 0 52vh; width: 100%; }
-    .landing-bio { order: 0; flex: 0 0 auto; justify-content: center; padding: 16px 16px 0; }
-    .bio { width: min(calc(100vw - 32px), 520px); }
+  @media (max-width: 600px) {
+    .col { padding-inline: 20px; }
+    .scan-note { display: none; }
+    .hero { padding-top: calc(var(--nav-h) + 32px); gap: 48px; padding-bottom: 96px; }
+    .hero-name { font-size: 34px; margin-bottom: 18px; }
+    .hero-bio p { font-size: 16px; }
+    .section-head { font-size: 30px; margin-bottom: 32px; }
+    .cards-featured, .cards-rest { grid-template-columns: minmax(0, 1fr); gap: 48px; }
+    .cards-rest { margin-top: 48px; }
+    .sails-wrap { padding-top: 112px; }
+    .footer { margin-top: 112px; }
   }
 </style>
+
+<script>
+  import { startPageWind } from '../components/flow/pageWind';
+  import { initHeroAnimation } from '../scripts/heroAnimations';
+
+  let stopWind: (() => void) | null = null;
+  let stopThumbs: Array<() => void> = [];
+
+  function start() {
+    const canvas = document.querySelector<HTMLCanvasElement>('canvas[data-wind]');
+    const root = document.querySelector<HTMLElement>('[data-wind-root]');
+    if (!canvas || !root) return;
+    if (!stopWind) {
+      const scanHost = document.querySelector<HTMLElement>('[data-scan-host]');
+      stopWind = startPageWind({
+        canvas,
+        root,
+        sailsSvg: document.querySelector<SVGSVGElement>('svg[data-sails]'),
+        pauseButton: document.querySelector<HTMLButtonElement>('[data-pause-air]'),
+        scan: scanHost ? { element: scanHost } : null,
+      });
+    }
+    if (!stopThumbs.length) {
+      document.querySelectorAll<HTMLCanvasElement>('.thumb canvas[data-animation]').forEach((c) => {
+        stopThumbs.push(initHeroAnimation(c.dataset.animation!, c));
+      });
+    }
+  }
+
+  function stop() {
+    stopWind?.();
+    stopWind = null;
+    stopThumbs.forEach((s) => s());
+    stopThumbs = [];
+  }
+
+  document.addEventListener('astro:page-load', start);
+  document.addEventListener('astro:before-swap', stop);
+</script>

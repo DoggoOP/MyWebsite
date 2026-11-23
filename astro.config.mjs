@@ -14,5 +14,6 @@ export default defineConfig({
     }),
   ],
   output: 'static',
+  redirects: { '/projects': '/#projects' },
   devToolbar: { enabled: false },
 });

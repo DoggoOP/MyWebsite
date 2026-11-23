@@ -3,7 +3,7 @@ import { SITE, getProjects } from '../lib/siteIndex';
 
 export const GET: APIRoute = async () => {
   const projects = await getProjects();
-  const urls = [`${SITE}/`, `${SITE}/about`, `${SITE}/projects`, ...projects.map(p => p.url)];
+  const urls = [`${SITE}/`, `${SITE}/about`, ...projects.map(p => p.url)];
   const body =
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
