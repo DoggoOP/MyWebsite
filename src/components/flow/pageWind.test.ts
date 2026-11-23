@@ -166,6 +166,42 @@ function drag(target: Element, pointerType: string) {
   pointer('pointerup', target, { pointerType, x: 118, y: 100 });
 }
 
+test('the wind asks the scan for a silhouette at start and after each relayout', () => {
+  const opts = setup();
+  let asks = 0;
+  opts.scan.element.addEventListener('scan-silhouette-request', () => { asks++; });
+  const stop = startPageWind(opts);
+  expect(asks).toBe(1);
+  window.dispatchEvent(new Event('resize'));
+  flush();
+  expect(asks).toBe(2);
+  stop();
+  window.dispatchEvent(new Event('resize'));
+  flush();
+  expect(asks).toBe(2);
+});
+
+test('a host around a late-mounted scan hears the silhouette and forwards requests', () => {
+  const opts = setup();
+  const host = document.createElement('div');
+  document.body.append(host);
+  const stop = startPageWind({ ...opts, scan: { element: host } });
+  const scanEl = document.createElement('div');
+  scanEl.setAttribute('data-scan', '');
+  host.append(scanEl);
+  let asks = 0;
+  scanEl.addEventListener('scan-silhouette-request', () => { asks++; });
+  const pts: number[] = [];
+  for (let y = 200; y < 260; y++) for (let x = 400; x < 460; x++) pts.push(x, y);
+  scanEl.dispatchEvent(new CustomEvent('scan-silhouette', { detail: new Float32Array(pts) }));
+  const s = solvers[0];
+  expect(s.masks.at(-1)![46 * s.cols + 86]).toBe(1);
+  window.dispatchEvent(new Event('resize'));
+  flush();
+  expect(asks).toBe(1);
+  stop();
+});
+
 test('mouse drags on text stir the air; touch and drags from links do not', () => {
   const stop = startPageWind(setup());
   const s = solvers[0];

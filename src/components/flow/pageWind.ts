@@ -29,7 +29,11 @@ export type PageWindOptions = {
   root: HTMLElement;
   sailsSvg: SVGSVGElement | null;
   pauseButton: HTMLButtonElement | null;
-  /** The scan wrapper; the viewer dispatches `scan-silhouette` (detail: page-space x,y pairs) on it. */
+  /**
+   * The scan wrapper, or a static host around a scan that mounts later. The viewer dispatches a
+   * non-bubbling `scan-silhouette` (detail: page-space x,y pairs) on its `[data-scan]` wrapper; a
+   * capture listener on the host hears that too.
+   */
   scan: { element: HTMLElement } | null;
   /** Tests only: replaces CpuLbm / GpuLbm construction. */
   createSolver?: (backend: Backend, cols: number, rows: number) => SolverLike;
@@ -216,6 +220,13 @@ export function startPageWind(opts: PageWindOptions): () => void {
     });
   }
 
+  /** The viewer answers with a fresh `scan-silhouette`; layout shifts move the circle without a camera change. */
+  function requestScan() {
+    if (!scan) return;
+    const target = scan.element.querySelector('[data-scan]') ?? scan.element;
+    target.dispatchEvent(new CustomEvent('scan-silhouette-request'));
+  }
+
   function relayout() {
     const g = sizeGrid();
     const oldKey = sailsKey;
@@ -226,6 +237,7 @@ export function startPageWind(opts: PageWindOptions): () => void {
     } else if (sailsKey !== oldKey) {
       solver.setMask(mask());
     }
+    requestScan();
     scheduleDraw();
   }
 
@@ -307,9 +319,10 @@ export function startPageWind(opts: PageWindOptions): () => void {
     [document, 'astro:before-swap', cleanup],
   ];
   if (pauseButton) listeners.push([pauseButton, 'click', onPause]);
-  if (scan) listeners.push([scan.element, 'scan-silhouette', onScan]);
+  if (scan) listeners.push([scan.element, 'scan-silhouette', onScan, { capture: true }]);
   if (darkMq) listeners.push([darkMq, 'change', onTheme]);
   for (const [t, type, fn, o] of listeners) t.addEventListener(type, fn, o);
+  requestScan(); // the viewer may have sent the model-ready silhouette before this listener existed
   if (backend === 'cpu') useCpu(); // a webgl2 canvas without float targets can't also paint 2D
   if (gl) {
     canvas.addEventListener('webglcontextlost', onLost);

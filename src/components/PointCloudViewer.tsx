@@ -124,6 +124,10 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
     // but prevent the camera from moving so close (or panning so far) that the
     // person is sliced by that canvas edge.
     controls.noPan = circle;
+    // The wheel scrolls the one-page home instead of zooming the circle, and on touch screens a
+    // vertical swipe scrolls the page while a horizontal drag still rotates the scan.
+    controls.noZoom = circle;
+    if (circle && window.matchMedia('(pointer: coarse)').matches) renderer.domElement.style.touchAction = 'pan-y';
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 
@@ -170,6 +174,11 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
       lastEmitQuat.copy(camera.quaternion);
     };
 
+    // The page wind may attach after the model-ready emit, and layout shifts move the circle
+    // without a camera change, so the wind asks again and the viewer answers with a fresh emit.
+    const onSilhouetteRequest = () => { if (modelReady) emitSilhouette(); };
+    wrapper?.addEventListener('scan-silhouette-request', onSilhouetteRequest);
+
     const animate = () => {
       s.animId = requestAnimationFrame(animate);
       if (introActive) stepIntro(performance.now());
@@ -194,7 +203,7 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
     const onResize = () => {
       if (!container) return;
       camera.aspect = container.clientWidth / container.clientHeight;
-      camera.filmOffset = window.innerWidth <= 900 ? 0 : 4;
+      camera.filmOffset = circle || window.innerWidth <= 900 ? 0 : 4;
       camera.updateProjectionMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
       controls.handleResize();
@@ -394,7 +403,7 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
         camera.up.set(0, 0, 1);
         // A raised near-frontal camera accounts for the scan's leaning pose.
         camera.position.set(center.x - maxDim * 0.12, center.y - maxDim * 1.85, center.z + maxDim * 1.58);
-        camera.filmOffset = window.innerWidth <= 900 ? 0 : 4;
+        camera.filmOffset = circle || window.innerWidth <= 900 ? 0 : 4;
         camera.updateProjectionMatrix();
         camera.lookAt(controls.target);
         if (circle) {
@@ -469,6 +478,7 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
     return () => {
       loadAbort.abort();
       window.removeEventListener('resize', onResize);
+      wrapper?.removeEventListener('scan-silhouette-request', onSilhouetteRequest);
       renderer.domElement.removeEventListener('pointerdown', cancelIntro);
       if (s.animId) cancelAnimationFrame(s.animId);
       controls.dispose();

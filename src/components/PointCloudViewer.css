@@ -37,6 +37,9 @@
   cursor: grab;
 }
 .pcv-circle.is-grabbing { cursor: grabbing; }
+@media (pointer: coarse) {
+  .pcv-circle { touch-action: pan-y; }
+}
 .pcv-circle .pcv-canvas {
   position: absolute;
   inset: 0;
