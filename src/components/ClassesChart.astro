@@ -29,44 +29,57 @@ const axisBoxes: Box[] = labels.map((l) => {
   return [x0, l.y - 9, x0 + w, l.y + 17];
 });
 const spots = placeLabels(L.dots, axisBoxes);
+
+// Phones shrink the pentagon about the center and pull each axis label in by the same factor,
+// so the larger phone labels stay inside the column. The top label also rises by the growth of
+// both label lines, since those lines hang toward the pentagon.
+const PHONE_SCALE = 0.76;
+const PHONE_FONT_GROWTH = (17 - 11) * 1.27;
+const labelShift = (l: { x: number; y: number; anchor: string }) => {
+  const dx = (PHONE_SCALE - 1) * (l.x - cx);
+  const dy = (PHONE_SCALE - 1) * (l.y - cy) - (l.anchor === 'middle' ? PHONE_FONT_GROWTH : 0);
+  return `--dx: ${dx.toFixed(1)}px; --dy: ${dy.toFixed(1)}px`;
+};
 ---
 
 <div class="classes-chart">
   <figure class="cc-figure">
     <svg viewBox="0 0 600 560" role="img" aria-label="Pentagon chart of 20 classes across five areas">
-      {rings.map((pts) => <polygon points={pts} fill="var(--bg)" stroke="var(--rule)" stroke-width="1" />)}
-      {[0, 1, 2, 3, 4].map((k) => {
-        const [x, y] = vertex(k, R);
-        return <line x1={cx} y1={cy} x2={x} y2={y} stroke="var(--rule)" stroke-width="1" />;
-      })}
-      {L.contours.map((c, i) => (
-        <polygon
-          points={poly(c)}
-          fill={i === 4 ? '#c2683a' : 'none'}
-          fill-opacity={i === 4 ? 0.07 : undefined}
-          stroke={CONTOUR_STROKES[i]}
-          stroke-width="1.5"
-          stroke-linejoin="round"
-        />
-      ))}
-      {labels.map((l) => (
-        <text x={l.x} y={l.y} text-anchor={l.anchor} class="cc-axis">
-          <tspan x={l.x} font-weight="700" fill="var(--ink)">{AXIS_LABELS[l.k]}</tspan>
-          <tspan x={l.x} dy="14" fill="var(--muted)">{fmt(L.unitsPerAxis[l.k])} units</tspan>
-        </text>
-      ))}
-      {L.dots.map((d, i) => (
-        <g>
-          <circle
-            cx={d.x}
-            cy={d.y}
-            r={d.d / 2}
-            fill={d.now ? 'var(--bg)' : AXIS_COLORS[d.axis]}
-            stroke={AXIS_COLORS[d.axis]}
-            stroke-width={d.now ? 2 : 1}
+      <g class="cc-plot" style={`transform-origin: ${cx}px ${cy}px`}>
+        {rings.map((pts) => <polygon points={pts} fill="var(--bg)" stroke="var(--rule)" stroke-width="1" />)}
+        {[0, 1, 2, 3, 4].map((k) => {
+          const [x, y] = vertex(k, R);
+          return <line x1={cx} y1={cy} x2={x} y2={y} stroke="var(--rule)" stroke-width="1" />;
+        })}
+        {L.contours.map((c, i) => (
+          <polygon
+            points={poly(c)}
+            fill={i === 4 ? '#c2683a' : 'none'}
+            fill-opacity={i === 4 ? 0.07 : undefined}
+            stroke={CONTOUR_STROKES[i]}
+            stroke-width="1.5"
+            stroke-linejoin="round"
           />
-          <text x={spots[i].x.toFixed(1)} y={spots[i].y.toFixed(1)} text-anchor={spots[i].anchor} class="cc-code" fill="var(--ink2)">{d.code}</text>
-        </g>
+        ))}
+        {L.dots.map((d, i) => (
+          <g>
+            <circle
+              cx={d.x}
+              cy={d.y}
+              r={d.d / 2}
+              fill={d.now ? 'var(--bg)' : AXIS_COLORS[d.axis]}
+              stroke={AXIS_COLORS[d.axis]}
+              stroke-width={d.now ? 2 : 1}
+            />
+            <text x={spots[i].x.toFixed(1)} y={spots[i].y.toFixed(1)} text-anchor={spots[i].anchor} class="cc-code" fill="var(--ink2)">{d.code}</text>
+          </g>
+        ))}
+      </g>
+      {labels.map((l) => (
+        <text x={l.x} y={l.y} text-anchor={l.anchor} class="cc-axis" style={labelShift(l)}>
+          <tspan x={l.x} font-weight="700" fill="var(--ink)">{AXIS_LABELS[l.k]}</tspan>
+          <tspan x={l.x} dy="1.27em" fill="var(--muted)">{fmt(L.unitsPerAxis[l.k])} units</tspan>
+        </text>
       ))}
     </svg>
     <figcaption>Each dot is a class. Dots sit closer to the areas each class covers and grow with units. Rings mark this quarter.</figcaption>
@@ -108,6 +121,20 @@ const spots = placeLabels(L.dots, axisBoxes);
   .cc-figure svg { display: block; width: 100%; height: auto; overflow: visible; }
   .cc-axis { font-size: 11px; letter-spacing: 0.08em; }
   .cc-code { font-size: 10.5px; }
+  /* A halo in the page color keeps the wind lines behind from crossing the glyphs. */
+  .cc-figure text {
+    paint-order: stroke;
+    stroke: var(--bg);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+  /* On phones the dot codes shrink below legibility; the list below names every class. */
+  @media (max-width: 599px) {
+    .cc-code { display: none; }
+    .cc-figure svg { margin-block: -12%; } /* trims the band the smaller pentagon leaves empty */
+    .cc-plot { transform: scale(0.76); }
+    .cc-axis { font-size: 17px; stroke-width: 4px; transform: translate(var(--dx), var(--dy)); }
+  }
   figcaption { margin-top: 12px; font-size: 13px; color: var(--muted); }
   .cc-list { display: grid; gap: 28px; }
   .cc-group header {
