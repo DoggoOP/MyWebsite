@@ -1,0 +1,121 @@
+---
+import { AXES, CLASSES } from '../data/classes';
+import { layoutClasses } from '../lib/pentagon';
+
+const R = 200;
+const cx = 300;
+const cy = 290;
+const AXIS_COLORS = ['#2f5873', '#7fa2b4', '#a24f26', '#d4956b', '#8d8b85'];
+const AXIS_LABELS = ['MATH', 'CS', 'AERO', 'MECH + PHYSICS', 'HUMANITIES'];
+const CONTOUR_STROKES = ['#7d3618', '#a24f26', '#c2683a', '#d4956b', '#e9b896'];
+
+const L = layoutClasses(CLASSES, R, cx, cy);
+const vertex = (k: number, r: number): [number, number] => {
+  const a = ((-90 + 72 * k) * Math.PI) / 180;
+  return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+};
+const poly = (pts: [number, number][]) => pts.map((p) => p.map((v) => v.toFixed(1)).join(',')).join(' ');
+const rings = [0.25, 0.5, 0.75, 1].map((s) => poly([0, 1, 2, 3, 4].map((k) => vertex(k, R * s))));
+const labels = [0, 1, 2, 3, 4].map((k) => {
+  const [x, y] = vertex(k, R * 1.17);
+  const c = Math.cos(((-90 + 72 * k) * Math.PI) / 180);
+  return { k, x, y, anchor: c > 0.3 ? 'start' : c < -0.3 ? 'end' : 'middle' };
+});
+const fmt = (n: number) => String(Number(n.toFixed(2)));
+---
+
+<div class="classes-chart">
+  <figure class="cc-figure">
+    <svg viewBox="0 0 600 560" role="img" aria-label="Pentagon chart of 20 classes across five areas">
+      {rings.map((pts) => <polygon points={pts} fill="var(--bg)" stroke="var(--rule)" stroke-width="1" />)}
+      {[0, 1, 2, 3, 4].map((k) => {
+        const [x, y] = vertex(k, R);
+        return <line x1={cx} y1={cy} x2={x} y2={y} stroke="var(--rule)" stroke-width="1" />;
+      })}
+      {L.contours.map((c, i) => (
+        <polygon
+          points={poly(c)}
+          fill={i === 4 ? '#c2683a' : 'none'}
+          fill-opacity={i === 4 ? 0.07 : undefined}
+          stroke={CONTOUR_STROKES[i]}
+          stroke-width="1.5"
+          stroke-linejoin="round"
+        />
+      ))}
+      {labels.map((l) => (
+        <text x={l.x} y={l.y} text-anchor={l.anchor} class="cc-axis">
+          <tspan x={l.x} font-weight="700" fill="var(--ink)">{AXIS_LABELS[l.k]}</tspan>
+          <tspan x={l.x} dy="14" fill="var(--muted)">{fmt(L.unitsPerAxis[l.k])} units</tspan>
+        </text>
+      ))}
+      {L.dots.map((d) => (
+        <g>
+          <circle
+            cx={d.x}
+            cy={d.y}
+            r={d.d / 2}
+            fill={d.now ? 'var(--bg)' : AXIS_COLORS[d.axis]}
+            stroke={AXIS_COLORS[d.axis]}
+            stroke-width={d.now ? 2 : 1}
+          />
+          <text x={d.x + d.d / 2 + 3} y={d.y + 3.5} class="cc-code" fill="var(--ink2)">{d.code}</text>
+        </g>
+      ))}
+    </svg>
+    <figcaption>Each dot is a class, pulled toward the areas the class covers and sized by units. Rings mark this quarter.</figcaption>
+  </figure>
+
+  <div class="cc-list">
+    {L.groups.map((g) => (
+      <section class="cc-group">
+        <header>
+          <span class="cc-dot" style={`background:${AXIS_COLORS[g.axis]}`}></span>
+          <span class="cc-axisname">{AXES[g.axis]}</span>
+          <span class="cc-units">{g.units} units</span>
+        </header>
+        <ul>
+          {g.rows.map((r) => (
+            <li>
+              <span class="cc-rcode">{r.code}</span>
+              <span class="cc-title">{r.title}</span>
+              <span class="cc-ru">{r.units}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </div>
+</div>
+
+<style>
+  .classes-chart {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 64px;
+    align-items: start;
+  }
+  @media (max-width: 959px) {
+    .classes-chart { grid-template-columns: 1fr; gap: 40px; }
+  }
+  .cc-figure { margin: 0; }
+  .cc-figure svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .cc-axis { font-size: 11px; letter-spacing: 0.08em; }
+  .cc-code { font-size: 10.5px; }
+  figcaption { margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .cc-list { display: grid; gap: 28px; }
+  .cc-group header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .cc-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .cc-axisname { font-weight: 700; color: var(--ink); }
+  .cc-units { margin-left: auto; font-size: 13px; color: var(--muted); }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; gap: 12px; padding: 7px 0; font-size: 14px; }
+  .cc-rcode { flex: 0 0 92px; font-weight: 700; color: var(--ink); }
+  .cc-title { flex: 1; color: var(--ink2); }
+  .cc-ru { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+</style>
