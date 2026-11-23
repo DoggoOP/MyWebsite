@@ -107,6 +107,11 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
     const lastSortedPos = new THREE.Vector3();
     const lastSortedQuat = new THREE.Quaternion();
     let modelReady = false;
+    let disposed = false;
+    // The scan renders only when something on screen changes: a camera move, the intro swing,
+    // a resize, the model arriving, or the circle scrolling back into view.
+    let needsRender = true;
+    const invalidate = () => { needsRender = true; };
 
     const scene = new THREE.Scene();
     scene.background = null;
@@ -125,6 +130,7 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
     controls.zoomSpeed = 1.2;
     controls.panSpeed = 0.8;
     controls.dynamicDampingFactor = 0.15;
+    controls.addEventListener('change', invalidate);
     // The homepage scan sits in a half-width canvas. Keep orbit/zoom interactive,
     // but prevent the camera from moving so close (or panning so far) that the
     // person is sliced by that canvas edge.
@@ -194,7 +200,7 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
     const animate = () => {
       if (!inView) { s.animId = undefined; return; }
       s.animId = requestAnimationFrame(animate);
-      if (introActive) stepIntro(performance.now());
+      if (introActive) { stepIntro(performance.now()); needsRender = true; }
       controls.update();
       if (circle && modelReady && performance.now() - lastEmit > 120 &&
           (camera.position.distanceToSquared(lastEmitPos) > 1e-6 ||
@@ -208,14 +214,17 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
         lastSort = performance.now();
         lastSortedPos.copy(camera.position);
         lastSortedQuat.copy(camera.quaternion);
+        needsRender = true;
       }
+      if (!needsRender) return;
+      needsRender = false;
       renderer.render(scene, camera);
     };
     animate();
     const io = typeof IntersectionObserver === 'function'
       ? new IntersectionObserver((entries) => {
         inView = entries[entries.length - 1].isIntersecting;
-        if (inView && s.animId === undefined) animate();
+        if (inView && s.animId === undefined) { needsRender = true; animate(); }
       })
       : null;
     io?.observe(container);
@@ -227,7 +236,8 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
       camera.updateProjectionMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
       controls.handleResize();
-      emitSilhouette();
+      needsRender = true;
+      // No silhouette here: the page wind requests one after every relayout.
     };
     window.addEventListener('resize', onResize);
 
@@ -260,6 +270,7 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
       .then(async ([buffer, axesBuffer]) => {
         showProgress(94);
         await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+        if (disposed) return;
         const data = parseLssnap(buffer);
         const axisCount = new DataView(axesBuffer).getUint32(0, true);
         if (axisCount !== data.vertexCount) throw new Error('Scan and splat geometry do not match');
@@ -279,6 +290,7 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
           fullBox.getCenter(fullCenter);
           const fullSize = new THREE.Vector3();
           fullBox.getSize(fullSize);
+          tmpGeo.dispose();
 
           const xCut = fullCenter.x;
           const yCutMax = fullBox.min.y + fullSize.y * 0.5;
@@ -414,6 +426,7 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
         bounds.setAttribute('position', new THREE.BufferAttribute(finalPositions, 3));
         bounds.computeBoundingBox();
         const box = bounds.boundingBox!;
+        bounds.dispose();
         const center = new THREE.Vector3();
         box.getCenter(center);
         const size = new THREE.Vector3();
@@ -485,6 +498,7 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
         scene.add(annGroup);
 
         modelReady = true;
+        needsRender = true;
         emitSilhouette();
         if (circle && intro && !reducedMotion) {
           introStart = performance.now();
@@ -509,8 +523,17 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
       renderer.domElement.removeEventListener('pointerdown', cancelIntro);
       if (s.animId !== undefined) cancelAnimationFrame(s.animId);
       s.animId = undefined;
+      disposed = true;
+      controls.removeEventListener('change', invalidate);
       controls.dispose();
+      scene.traverse((obj) => {
+        const o = obj as THREE.Mesh;
+        o.geometry?.dispose();
+        const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+        for (const m of mats) m.dispose();
+      });
       renderer.dispose();
+      renderer.forceContextLoss();
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
   }, [src, axesSrc, filter, circle, intro]);
@@ -524,6 +547,8 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
       ref={wrapperRef}
       className={`pcv-wrapper${circle ? ' pcv-circle' : ''} ${className || ''}`}
       data-scan={circle ? '' : undefined}
+      role={circle ? 'img' : undefined}
+      aria-label={circle ? 'Interactive 3D scan of Ethan. Drag to rotate.' : undefined}
       onPointerDown={circle ? () => setGrabbing(true) : undefined}
       onPointerUp={circle ? () => setGrabbing(false) : undefined}
       onPointerCancel={circle ? () => setGrabbing(false) : undefined}
