@@ -13,4 +13,6 @@ test('jib sits upwind with its own 10 degree offset', () => {
 test('leeward point lies on the convex side of the main', () => {
   const [x, y] = leewardPoint('main');
   expect(x).toBeGreaterThan(-56.92); expect(y).toBeGreaterThan(83.44);
+  const [mx, my] = sailPolylines().main[20];
+  expect(Math.hypot(x - mx, y - my)).toBeCloseTo(10, 0);
 });

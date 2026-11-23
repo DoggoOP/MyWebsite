@@ -58,6 +58,5 @@ export function leewardPoint(sail: SailName, opts: Opts = {}): Pt {
   const nx = -(y1 - y0) / len;
   const ny = (x1 - x0) / len;
   const [ox, oy] = out([mx, my]);
-  const [dx, dy] = out([nx, ny]);
-  return [ox + dx * 10, oy + dy * 10];
+  return [ox + 10 * ny, oy + 10 * nx];
 }
