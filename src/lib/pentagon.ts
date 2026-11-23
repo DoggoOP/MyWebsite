@@ -44,3 +44,55 @@ export function layoutClasses(rows: ClassRow[], R: number, cx: number, cy: numbe
 
   return { dots, unitsPerAxis, totalUnits, contours, groups };
 }
+
+/** Axis-aligned box: x0, y0, x1, y1 in viewBox units. */
+export type Box = [number, number, number, number];
+export type LabelSpot = { x: number; y: number; anchor: 'start' | 'middle' | 'end' };
+type LabelDot = { code: string; x: number; y: number; d: number };
+
+/** Approximate glyph width and cap box for the 10.5 px code labels. */
+const CHAR_W = 6.7;
+const ASC = 9.5;
+const DESC = 2.5;
+const PAD = 1;
+
+/** The box a code label covers when drawn at `spot` (baseline y). */
+export function labelBox(spot: LabelSpot, code: string): Box {
+  const w = code.length * CHAR_W;
+  const x0 = spot.anchor === 'start' ? spot.x : spot.anchor === 'end' ? spot.x - w : spot.x - w / 2;
+  return [x0, spot.y - ASC, x0 + w, spot.y + DESC];
+}
+
+const hits = (a: Box, b: Box) =>
+  a[0] < b[2] + PAD && b[0] < a[2] + PAD && a[1] < b[3] + PAD && b[1] < a[3] + PAD;
+
+/**
+ * Greedy label placement: each code label takes the first spot (right, left, above, below, then
+ * right or left nudged up and down) that clears every dot, every earlier label and the obstacles.
+ * A label with no clear spot falls back to the right side.
+ */
+export function placeLabels(dots: LabelDot[], obstacles: Box[]): LabelSpot[] {
+  const dotBoxes: Box[] = dots.map((d) => [d.x - d.d / 2, d.y - d.d / 2, d.x + d.d / 2, d.y + d.d / 2]);
+  const placed: Box[] = [];
+  return dots.map((d, i) => {
+    const r = d.d / 2;
+    const candidates: LabelSpot[] = [
+      { x: d.x + r + 3, y: d.y + 3.5, anchor: 'start' },
+      { x: d.x - r - 3, y: d.y + 3.5, anchor: 'end' },
+      { x: d.x, y: d.y - r - DESC - 3, anchor: 'middle' },
+      { x: d.x, y: d.y + r + ASC + 3, anchor: 'middle' },
+    ];
+    for (const dy of [-11, 11, -22, 22, -33, 33]) {
+      candidates.push({ x: d.x + r + 3, y: d.y + 3.5 + dy, anchor: 'start' });
+      candidates.push({ x: d.x - r - 3, y: d.y + 3.5 + dy, anchor: 'end' });
+    }
+    const clear = (s: LabelSpot) => {
+      const b = labelBox(s, d.code);
+      return !placed.some((p) => hits(b, p)) && !obstacles.some((o) => hits(b, o)) &&
+        !dotBoxes.some((o, j) => j !== i && hits(b, o));
+    };
+    const spot = candidates.find(clear) ?? candidates[0];
+    placed.push(labelBox(spot, d.code));
+    return spot;
+  });
+}

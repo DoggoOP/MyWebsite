@@ -1,6 +1,6 @@
 ---
 import { AXES, CLASSES } from '../data/classes';
-import { layoutClasses } from '../lib/pentagon';
+import { layoutClasses, placeLabels, type Box } from '../lib/pentagon';
 
 const R = 200;
 const cx = 300;
@@ -22,6 +22,13 @@ const labels = [0, 1, 2, 3, 4].map((k) => {
   return { k, x, y, anchor: c > 0.3 ? 'start' : c < -0.3 ? 'end' : 'middle' };
 });
 const fmt = (n: number) => String(Number(n.toFixed(2)));
+// Axis labels: a bold caps line (~8.6 px per glyph) over a units line (~6.6 px per glyph).
+const axisBoxes: Box[] = labels.map((l) => {
+  const w = Math.max(AXIS_LABELS[l.k].length * 8.6, `${fmt(L.unitsPerAxis[l.k])} units`.length * 6.6);
+  const x0 = l.anchor === 'start' ? l.x : l.anchor === 'end' ? l.x - w : l.x - w / 2;
+  return [x0, l.y - 9, x0 + w, l.y + 17];
+});
+const spots = placeLabels(L.dots, axisBoxes);
 ---
 
 <div class="classes-chart">
@@ -48,7 +55,7 @@ const fmt = (n: number) => String(Number(n.toFixed(2)));
           <tspan x={l.x} dy="14" fill="var(--muted)">{fmt(L.unitsPerAxis[l.k])} units</tspan>
         </text>
       ))}
-      {L.dots.map((d) => (
+      {L.dots.map((d, i) => (
         <g>
           <circle
             cx={d.x}
@@ -58,7 +65,7 @@ const fmt = (n: number) => String(Number(n.toFixed(2)));
             stroke={AXIS_COLORS[d.axis]}
             stroke-width={d.now ? 2 : 1}
           />
-          <text x={d.x + d.d / 2 + 3} y={d.y + 3.5} class="cc-code" fill="var(--ink2)">{d.code}</text>
+          <text x={spots[i].x.toFixed(1)} y={spots[i].y.toFixed(1)} text-anchor={spots[i].anchor} class="cc-code" fill="var(--ink2)">{d.code}</text>
         </g>
       ))}
     </svg>
