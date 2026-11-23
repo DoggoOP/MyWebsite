@@ -90,6 +90,7 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
     background: none;
     font-size: 14px;
     color: var(--muted);
+    white-space: nowrap;
   }
   .pause-air:hover, .pause-air[aria-pressed="true"] { color: var(--ink); }
   .nav-link:hover, .nav-link.active { color: var(--text-primary); }
@@ -102,8 +103,12 @@ const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
   @media (max-width: 600px) {
     .nav { padding: 0 18px 0 4px; }
     .nav-name { display: none; }
-    .nav-links { gap: 14px; }
+    .nav-links { gap: 12px; }
     .nav-link, .pause-air { font-size: 13px; }
+  }
+  @media (max-width: 400px) {
+    .nav { padding-right: 12px; }
+    .nav-links { gap: 10px; }
   }
 </style>
 
