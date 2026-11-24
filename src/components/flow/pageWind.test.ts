@@ -249,10 +249,10 @@ test('the air advances by elapsed time, not by frame count', () => {
   const stop = startPageWind(setup());
   const s = solvers[0];
   flush(); // the first frame has no previous one: one 60 fps frame's worth
-  expect(s.steps).toBe(6);
+  expect(s.steps).toBe(4);
   now += 1000 / 120; // a 120 Hz screen steps half as much per frame
   flush();
-  expect(s.steps).toBe(9);
+  expect(s.steps).toBe(6);
   stop();
 });
 
@@ -310,21 +310,21 @@ test('on a phone, a scroll during a skipped 30 fps frame redraws without steppin
   const stop = startPageWind(setup());
   const s = solvers[0];
   flush(); // steps and draws at t = 1000
-  expect(s.steps).toBe(6);
+  expect(s.steps).toBe(4);
   const draws = s.renders.length;
   now += 8; // inside the 30 fps window: the frame skips the step
   flush();
-  expect(s.steps).toBe(6);
+  expect(s.steps).toBe(4);
   expect(s.renders.length).toBe(draws); // no scroll, no redraw
   vi.stubGlobal('scrollY', 240);
   now += 8;
   flush();
-  expect(s.steps).toBe(6);
+  expect(s.steps).toBe(4);
   expect(s.renders.length).toBe(draws + 1);
   expect(s.renders.at(-1)).toBe(240);
-  now += 40; // past the window: 56 ms of air since the last step, capped at 16 steps
+  now += 40; // past the window: 56 ms of air since the last step, 15 more steps
   flush();
-  expect(s.steps).toBe(22);
+  expect(s.steps).toBe(19);
   stop();
 });
 

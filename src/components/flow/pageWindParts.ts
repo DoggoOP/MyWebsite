@@ -53,8 +53,8 @@ export function tunnelPad(pageW: number, disc: Disc | null): number {
   return Math.max(0, Math.ceil((TUNNEL_DIAMETERS * 2 * disc.r - pageW) / 2));
 }
 
-/** Lattice steps per second at 5 px cells: 6 per frame at 60 fps, as the desktop always ran. */
-export const STEPS_PER_SECOND = 360;
+/** Lattice steps per second at 5 px cells: 4.5 per frame at 60 fps, three quarters of the original pace. */
+export const STEPS_PER_SECOND = 270;
 export const MAX_STEPS_PER_FRAME = 16;
 
 /**

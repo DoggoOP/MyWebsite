@@ -101,15 +101,15 @@ test('a narrow page pads the tunnel to three circle diameters; a wide one gets n
 });
 
 test('steps follow elapsed time and cell size, carry the fraction and cap a long gap', () => {
-  expect(stepsFor(1000 / 60, 5, 0).steps).toBe(6);
-  expect(stepsFor(1000 / 30, 5, 0).steps).toBe(12); // a 30 fps phone frame moves the same air
-  expect(stepsFor(1000 / 30, 10, 0).steps).toBe(6); // twice the cell, half the steps for the same px
+  expect(stepsFor(1000 / 60, 5, 0).steps).toBe(4); // 4.5 steps
+  expect(stepsFor(1000 / 30, 5, 0).steps).toBe(9); // a 30 fps phone frame moves the same air
+  expect(stepsFor(1000 / 30, 10, 0).steps).toBe(4); // twice the cell, half the steps for the same px
   const a = stepsFor(1000 / 120, 5, 0);
-  expect(a.steps).toBe(3);
-  const b = stepsFor(10, 5, 0); // 3.6 steps
-  expect(b.steps).toBe(3);
-  expect(b.carry).toBeCloseTo(0.6);
-  expect(stepsFor(10, 5, b.carry).steps).toBe(4);
+  expect(a.steps).toBe(2);
+  const b = stepsFor(10, 5, 0); // 2.7 steps
+  expect(b.steps).toBe(2);
+  expect(b.carry).toBeCloseTo(0.7);
+  expect(stepsFor(10, 5, b.carry).steps).toBe(3);
   expect(stepsFor(5000, 5, 0)).toEqual({ steps: MAX_STEPS_PER_FRAME, carry: 0 });
-  expect(stepsFor(NaN, 5, 0).steps).toBe(6);
+  expect(stepsFor(NaN, 5, 0).steps).toBe(4);
 });
