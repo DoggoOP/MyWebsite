@@ -84,11 +84,12 @@ test('a stopped wind never steps again', () => {
   const stop = startPageWind(setup());
   flush(3);
   const s = solvers[0];
-  expect(s.steps).toBe(18);
+  const stepped = s.steps;
+  expect(stepped).toBeGreaterThan(0);
   stop();
   stop();
   flush(3);
-  expect(s.steps).toBe(18);
+  expect(s.steps).toBe(stepped);
   expect(frames.size).toBe(0);
 });
 
@@ -183,6 +184,30 @@ test('a relayout that moves the scan circle masks it where it sits now', () => {
   stop();
 });
 
+test('a circle wide for the page pads the tunnel, and the mask, drawing and drags all shift with it', () => {
+  withGl();
+  const opts = setup();
+  placeScan(opts.scan.element, 312, 200, 400); // 1024 px page, 400 px circle: a 1200 px tunnel, 88 px pad
+  const xs: number[] = [];
+  const stop = startPageWind({
+    ...opts,
+    createSolver: (_b, cols, rows) => {
+      const f = fake(cols, rows);
+      f.render = (o) => { xs.push(o.scrollX); };
+      return f;
+    },
+  });
+  const s = solvers[0];
+  expect(s.cols).toBe(240);
+  expect(s.masks[0][80 * s.cols + Math.floor((512 + 88) / 5)]).toBe(1); // the circle centre, shifted
+  expect(s.masks[0][80 * s.cols + 2]).toBe(0); // the off-screen margin is open air
+  flush();
+  expect(xs.at(-1)).toBe(88);
+  drag(document.getElementById('text')!, 'mouse');
+  expect(s.forces[0][0]).toBe(Math.floor((118 + 88) / 5));
+  stop();
+});
+
 test('an unmeasured scan box adds no circle', () => {
   const stop = startPageWind(setup());
   expect(solvers[0].masks[0].every((v) => v === 0)).toBe(true);
@@ -218,6 +243,19 @@ test('a move with no buttons down ends a drag whose release the page missed', ()
   stop();
 });
 
+test('the air advances by elapsed time, not by frame count', () => {
+  let now = 1000;
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
+  const stop = startPageWind(setup());
+  const s = solvers[0];
+  flush(); // the first frame has no previous one: one 60 fps frame's worth
+  expect(s.steps).toBe(6);
+  now += 1000 / 120; // a 120 Hz screen steps half as much per frame
+  flush();
+  expect(s.steps).toBe(9);
+  stop();
+});
+
 test('reduced motion still runs the air; Pause is the way to stop it', () => {
   media['(prefers-reduced-motion: reduce)'] = true;
   const opts = setup();
@@ -225,7 +263,7 @@ test('reduced motion still runs the air; Pause is the way to stop it', () => {
   expect(activeLoops()).toBe(1);
   expect(opts.pauseButton.textContent).toBe('Pause air');
   flush(2);
-  expect(solvers[0].steps).toBe(12);
+  expect(solvers[0].steps).toBeGreaterThan(0);
   stop();
 });
 
@@ -284,9 +322,9 @@ test('on a phone, a scroll during a skipped 30 fps frame redraws without steppin
   expect(s.steps).toBe(6);
   expect(s.renders.length).toBe(draws + 1);
   expect(s.renders.at(-1)).toBe(240);
-  now += 40; // past the window: a full frame steps again
+  now += 40; // past the window: 56 ms of air since the last step, capped at 16 steps
   flush();
-  expect(s.steps).toBe(12);
+  expect(s.steps).toBe(22);
   stop();
 });
 

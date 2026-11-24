@@ -7,7 +7,7 @@ import { gridSize, toCell, type Grid } from './grid';
 import { CpuLbm } from './lbmCpu';
 import { solidCentroids, type Disc } from './mask';
 import {
-  DRAG_RADIUS, buildMask, canStir, dragForce, readRef, sailsToPage, viewWindow,
+  DRAG_RADIUS, buildMask, canStir, dragForce, readRef, sailsToPage, stepsFor, tunnelPad, viewWindow,
 } from './pageWindParts';
 
 /** The solver surface the orchestrator drives; CpuLbm and GpuLbm both fit. */
@@ -38,7 +38,6 @@ export type PageWindOptions = {
 type DevHandle = { activeLoops: () => number; readonly backend: Backend; readonly grid: Grid };
 declare global { interface Window { __wind?: DevHandle } }
 
-const SUBSTEPS = 6;
 const PHONE_FRAME_MS = 1000 / 30 - 3; // vsync jitter tolerance
 const FROZEN_STEPS = 200;
 const CPU_BUDGET = 40_000;
@@ -87,6 +86,8 @@ export function startPageWind(opts: PageWindOptions): () => void {
   let sailLines: Pt[][] = [];
   let disc: Disc | null = null;
   let solidsKey = '';
+  /** Page px of off-screen air left of the page (and right of it); lattice x = page x + pad. */
+  let pad = 0;
   let maskBuf: Uint8Array = new Uint8Array(0);
   // The air is the page's main motion and drifts slowly, so it runs under reduced motion too; Pause stops it.
   let paused = false;
@@ -94,6 +95,7 @@ export function startPageWind(opts: PageWindOptions): () => void {
   let lost = false;
   let raf = 0, layoutRaf = 0, drawRaf = 0;
   let lastFrame = -Infinity;
+  let lastStep = NaN, carry = 0;
   let drawnX = NaN, drawnY = NaN;
   let drag: { id: number; x: number; y: number } | null = null;
   let statFrames = 0, statMs = 0;
@@ -103,7 +105,7 @@ export function startPageWind(opts: PageWindOptions): () => void {
     b === 'cpu' ? new CpuLbm(cols, rows) : new GpuLbm(gl!, cols, rows, b));
 
   function sizeGrid(): Grid {
-    const w = root.scrollWidth || innerWidth, h = root.scrollHeight || innerHeight;
+    const w = (root.scrollWidth || innerWidth) + 2 * pad, h = root.scrollHeight || innerHeight;
     if (backend === 'cpu') return gridSize(w, h, { phone: phone(), maxTexture: CPU_MAX_TEXTURE, budget: CPU_BUDGET });
     return gridSize(w, h, { phone: phone(), maxTexture: gl ? (gl.getParameter(gl.MAX_TEXTURE_SIZE) as number) : CPU_MAX_TEXTURE });
   }
@@ -118,13 +120,15 @@ export function startPageWind(opts: PageWindOptions): () => void {
     disc = box && box.width > 0 && box.height > 0
       ? { cx: box.left + scrollX + box.width / 2, cy: box.top + scrollY + box.height / 2, r: Math.min(box.width, box.height) / 2 }
       : null;
+    pad = tunnelPad(root.scrollWidth || innerWidth, disc);
     solidsKey = sailLines.map((l) => (l.length ? `${l[0]},${l[l.length - 1]}` : '')).join('|')
-      + (disc ? `|${disc.cx},${disc.cy},${disc.r}` : '');
+      + (disc ? `|${disc.cx},${disc.cy},${disc.r}` : '') + `|${pad}`;
   }
 
   /** Sails + scan circle for the current grid, in a buffer reused between rebuilds. */
   function mask() {
-    maskBuf = buildMask(grid, sailLines, disc, maskBuf);
+    const sails = pad ? sailLines.map((l) => l.map(([x, y]): Pt => [x + pad, y])) : sailLines;
+    maskBuf = buildMask(grid, sails, disc && { ...disc, cx: disc.cx + pad }, maskBuf);
     return maskBuf;
   }
 
@@ -180,14 +184,14 @@ export function startPageWind(opts: PageWindOptions): () => void {
         canvas.width = grid.cols;
         canvas.height = viewRows;
       }
-      const key = `cpu|${grid.cols * grid.cell}|${viewRows * grid.cell}|${scrollX}|${offsetPx}`;
+      const key = `cpu|${grid.cols * grid.cell}|${viewRows * grid.cell}|${scrollX + pad}|${offsetPx}`;
       if (key !== styleKey) {
         styleKey = key;
         const s = canvas.style;
         s.width = `${grid.cols * grid.cell}px`;
         s.height = `${viewRows * grid.cell}px`;
         s.transformOrigin = '0 0';
-        s.transform = `translate(${-scrollX}px, ${-offsetPx}px)`;
+        s.transform = `translate(${-(scrollX + pad)}px, ${-offsetPx}px)`;
       }
       if (painter && solver.vorticity) painter.draw(solver.vorticity(), grid.cols, grid.rows, topRow, viewRows, lut, ref);
       return;
@@ -208,7 +212,7 @@ export function startPageWind(opts: PageWindOptions): () => void {
       s.height = `${viewH}px`;
       s.transform = '';
     }
-    solver.render?.({ scrollX, scrollY, viewW, viewH, cell: grid.cell, pixelRatio: bw / viewW, lut, ref });
+    solver.render?.({ scrollX: scrollX + pad, scrollY, viewW, viewH, cell: grid.cell, pixelRatio: bw / viewW, lut, ref });
   }
 
   const canRun = () => !stopped && !paused && !lost && !!solver && document.visibilityState !== 'hidden';
@@ -224,7 +228,10 @@ export function startPageWind(opts: PageWindOptions): () => void {
     }
     lastFrame = now;
     const t0 = performance.now();
-    solver!.step(SUBSTEPS);
+    const due = stepsFor(now - lastStep, grid.cell, carry);
+    lastStep = now;
+    carry = due.carry;
+    if (due.steps) solver!.step(due.steps);
     draw();
     if (stats && statFrames < STAT_FRAMES) {
       statMs += performance.now() - t0;
@@ -242,6 +249,7 @@ export function startPageWind(opts: PageWindOptions): () => void {
     } else {
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
+      lastStep = NaN; // a resumed loop starts with one frame's worth, not the whole pause
       running.delete(token);
     }
   }
@@ -256,9 +264,9 @@ export function startPageWind(opts: PageWindOptions): () => void {
   }
 
   function relayout() {
-    const g = sizeGrid();
     const oldKey = solidsKey;
     measureSolids();
+    const g = sizeGrid();
     if (!solver || g.cols !== grid.cols || g.rows !== grid.rows || g.cell !== grid.cell) {
       if (!lost) build();
       syncLoop();
@@ -298,7 +306,7 @@ export function startPageWind(opts: PageWindOptions): () => void {
     drag.y = e.clientY;
     if (!canRun() || (dx === 0 && dy === 0)) return;
     const [fx, fy] = dragForce(dx, dy);
-    const [col, row] = toCell(grid, e.clientX + scrollX, e.clientY + scrollY);
+    const [col, row] = toCell(grid, e.clientX + scrollX + pad, e.clientY + scrollY);
     solver!.addForce(col, row, fx, fy, DRAG_RADIUS);
   }
 

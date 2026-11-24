@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { test, expect } from 'vitest';
-import { canStir, dragForce, sailsToPage, viewWindow, readRef, buildMask } from './pageWindParts';
+import {
+  MAX_STEPS_PER_FRAME, buildMask, canStir, dragForce, readRef, sailsToPage, stepsFor, tunnelPad, viewWindow,
+} from './pageWindParts';
 import { paintBands } from './cpuRender';
 import { buildLut, FILL_ALPHA, LEVELS } from './colormap';
 
@@ -89,4 +91,25 @@ test('buildMask reuses and clears a caller buffer', () => {
   const mask = buildMask(g, [], null, buf);
   expect(mask).toBe(buf);
   expect(mask.every((v) => v === 0)).toBe(true);
+});
+
+test('a narrow page pads the tunnel to three circle diameters; a wide one gets none', () => {
+  expect(tunnelPad(375, { cx: 187, cy: 900, r: 167.5 })).toBe(315); // 1005 px tunnel
+  expect(tunnelPad(1440, { cx: 1000, cy: 300, r: 210 })).toBe(0);
+  expect(tunnelPad(375, null)).toBe(0);
+  expect(tunnelPad(0, { cx: 0, cy: 0, r: 100 })).toBe(0);
+});
+
+test('steps follow elapsed time and cell size, carry the fraction and cap a long gap', () => {
+  expect(stepsFor(1000 / 60, 5, 0).steps).toBe(6);
+  expect(stepsFor(1000 / 30, 5, 0).steps).toBe(12); // a 30 fps phone frame moves the same air
+  expect(stepsFor(1000 / 30, 10, 0).steps).toBe(6); // twice the cell, half the steps for the same px
+  const a = stepsFor(1000 / 120, 5, 0);
+  expect(a.steps).toBe(3);
+  const b = stepsFor(10, 5, 0); // 3.6 steps
+  expect(b.steps).toBe(3);
+  expect(b.carry).toBeCloseTo(0.6);
+  expect(stepsFor(10, 5, b.carry).steps).toBe(4);
+  expect(stepsFor(5000, 5, 0)).toEqual({ steps: MAX_STEPS_PER_FRAME, carry: 0 });
+  expect(stepsFor(NaN, 5, 0).steps).toBe(6);
 });
