@@ -48,8 +48,12 @@
         if (!gl) { show('FAIL no webgl2'); return; }
         const asked = new URLSearchParams(location.search).get('precision');
         const auto = pickBackend(gl);
-        const precision: Precision | 'cpu' = asked === 'f32' || asked === 'f16' ? asked : auto;
+        let precision: Precision | 'cpu' = asked === 'f32' || asked === 'f16' ? asked : auto;
         if (precision === 'cpu') { show('FAIL cpu: no float render targets'); return; }
+        if (!asked && precision === 'f32') {
+          // As the page wind does: iPhones refuse three float32 targets in one framebuffer.
+          try { new GpuLbm(gl, 8, 8, 'f32').dispose(); } catch { precision = 'f16'; }
+        }
 
         // Parity: radius-8 cylinder at (48, 40), seeded wake, one push at step 100.
         const mask = new Uint8Array(COLS * ROWS);

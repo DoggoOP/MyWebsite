@@ -47,7 +47,7 @@ const STAT_FRAMES = 120;
 const MAX_PIXEL_RATIO = 1.5;
 /** A software-rendered or blocklisted GPU fails the caveat check and falls back to the CPU solver. */
 const GL_ATTRS: WebGLContextAttributes = {
-  premultipliedAlpha: false, alpha: true, antialias: false, depth: false, stencil: false,
+  premultipliedAlpha: true, alpha: true, antialias: false, depth: false, stencil: false,
   failIfMajorPerformanceCaveat: true, powerPreference: 'low-power',
 };
 
@@ -150,9 +150,20 @@ export function startPageWind(opts: PageWindOptions): () => void {
     solver?.dispose?.();
     solver = null;
     grid = sizeGrid();
-    try {
-      solver = create(backend, grid.cols, grid.rows);
-    } catch (err) {
+    // iPhones render float32 targets but not three in one framebuffer (48 bytes a pixel), so a
+    // failed float32 build retries with float16 state before giving up the GPU.
+    let err: unknown;
+    for (const b of backend === 'f32' ? (['f32', 'f16'] as const) : [backend]) {
+      try {
+        solver = create(b, grid.cols, grid.rows);
+        backend = b;
+        break;
+      } catch (e) {
+        err = e;
+        if (gl?.isContextLost()) break;
+      }
+    }
+    if (!solver) {
       if (backend === 'cpu') { console.warn('[wind] no solver', err); return; }
       if (gl?.isContextLost()) {
         // A lost context, not a missing feature: webglcontextrestored rebuilds on the GPU.

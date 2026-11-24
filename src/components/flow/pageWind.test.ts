@@ -286,7 +286,7 @@ test('the GL context asks for a low-power GPU and refuses a software one', () =>
   const attrs = (vi.mocked(HTMLCanvasElement.prototype.getContext).mock.calls[0] as unknown[])[1] as WebGLContextAttributes;
   expect(attrs).toMatchObject({
     failIfMajorPerformanceCaveat: true, powerPreference: 'low-power',
-    premultipliedAlpha: false, alpha: true, antialias: false,
+    premultipliedAlpha: true, alpha: true, antialias: false,
   });
   stop();
 });
@@ -354,6 +354,28 @@ test('a GPU solver that throws on a lost context waits for restore instead of us
   stop();
 });
 
+test('a float32 solver the GPU refuses retries as float16 and stays on the GPU', () => {
+  withGl();
+  const opts = setup();
+  const backends: string[] = [];
+  const stop = startPageWind({
+    ...opts,
+    createSolver: (b, cols, rows) => {
+      backends.push(b);
+      if (b === 'f32') throw new Error('GpuLbm: framebuffer incomplete (0x8cdd)');
+      return fake(cols, rows);
+    },
+  });
+  expect(backends).toEqual(['f32', 'f16']);
+  expect(opts.canvas.isConnected).toBe(true);
+  expect(activeLoops()).toBe(1);
+  vi.stubGlobal('innerHeight', innerHeight + 300); // a rebuild goes straight to float16
+  window.dispatchEvent(new Event('resize'));
+  flush();
+  expect(backends).toEqual(['f32', 'f16', 'f16']);
+  stop();
+});
+
 test('a GPU solver that throws falls back to the CPU on a fresh canvas, restored on stop', () => {
   withGl();
   const opts = setup();
@@ -366,7 +388,7 @@ test('a GPU solver that throws falls back to the CPU on a fresh canvas, restored
       return fake(cols, rows);
     },
   });
-  expect(backends).toEqual(['f32', 'cpu']);
+  expect(backends).toEqual(['f32', 'f16', 'cpu']);
   expect(opts.canvas.isConnected).toBe(false);
   expect(document.querySelector('canvas[data-wind]')).not.toBeNull();
   expect(activeLoops()).toBe(1);

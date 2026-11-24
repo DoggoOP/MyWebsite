@@ -3,8 +3,8 @@ export type Grid = { cell: number; cols: number; rows: number };
 const START_CELL = 5;
 const STEP = 0.25;
 const BUDGET_DESKTOP = 300_000;
-/** Phones step fewer, larger cells: the same air speed in page px costs about 22M cell updates a second. */
-const BUDGET_PHONE = 100_000;
+/** The small phone scan circle needs little off-screen air, so phones keep cells near 5 px too. */
+const BUDGET_PHONE = 150_000;
 
 /**
  * Pick a lattice for a page: 5 CSS px cells, grown until the cell budget and texture limit fit.

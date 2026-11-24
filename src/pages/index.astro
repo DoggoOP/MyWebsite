@@ -233,8 +233,8 @@ const [jibX, jibY] = sails.jib[0];
   }
   .hand-sub { font-size: 21px; color: var(--copper); }
   .scan-note svg { flex: none; margin-top: 22px; color: var(--ink2); }
-  /* Two columns under 1060 px squeeze the note against the bio; one column under 620 px pushes the note off the left edge. */
-  @media (min-width: 961px) and (max-width: 1059px), (max-width: 619px) {
+  /* Two columns under 1060 px squeeze the note against the bio; the centred one column from 601 to 619 px pushes the note off the left edge. Phones move the note beside the small circle. */
+  @media (min-width: 961px) and (max-width: 1059px), (min-width: 601px) and (max-width: 619px) {
     .scan-note { display: none; }
   }
 
@@ -300,13 +300,27 @@ const [jibX, jibY] = sails.jib[0];
       padding-bottom: 120px;
     }
     .hero-text { max-width: 560px; }
+    /* Stacked, the scan leads and the bio follows. */
+    .hero-scan { order: -1; max-width: 320px; }
     .cards-featured, .cards-rest { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px 40px; }
     .cards-rest { margin-top: 56px; }
   }
 
   @media (max-width: 600px) {
     .col { padding-inline: 20px; }
-    .hero { padding-top: calc(var(--nav-h) + 32px); gap: 48px; padding-bottom: 96px; }
+    .hero { padding-top: calc(var(--nav-h) + 32px); gap: 28px; padding-bottom: 96px; justify-items: start; }
+    /* A small circle at the top left, the handwritten note to its right pointing back at it. */
+    .hero-scan { width: 150px; }
+    .scan-note {
+      left: calc(100% + 4px);
+      top: 14px;
+      flex-direction: row-reverse;
+      align-items: flex-start;
+      transform: rotate(-3deg);
+    }
+    .scan-note svg { width: 44px; height: 42px; margin-top: 12px; transform: scaleX(-1); }
+    .hand { font-size: 21px; white-space: normal; width: 9em; }
+    .hand-sub { font-size: 18px; }
     .hero-name { font-size: 34px; margin-bottom: 18px; }
     .hero-bio p { font-size: 16px; }
     .section-head { margin-bottom: 32px; }

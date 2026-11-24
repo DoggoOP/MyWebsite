@@ -340,10 +340,10 @@ void main() {
     lineRgb = lc.rgb;
     lineA = lc.a * cover;
   }
-  // Line over fill, composited here because the canvas is not premultiplied and blending is off.
+  // Line over fill, composited here (blending is off) and written premultiplied: iOS Safari
+  // composites a WebGL canvas as premultiplied even when the context asks for straight alpha.
   float a = lineA + fill.a * (1.0 - lineA);
-  vec3 rgb = lineRgb * lineA + fill.rgb * fill.a * (1.0 - lineA);
-  oColor = a > 0.0 ? vec4(rgb / a, a) : vec4(0.0);
+  oColor = vec4(lineRgb * lineA + fill.rgb * fill.a * (1.0 - lineA), a);
 }
 `;
 }
