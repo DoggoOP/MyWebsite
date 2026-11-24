@@ -31,7 +31,7 @@ const [jibX, jibY] = sails.jib[0];
   <div class="home" data-wind-root>
     <main>
       <section class="col hero">
-        <div class="hero-text">
+        <div class="hero-text veil">
           <h1 class="hero-name">Hi, I'm Ethan</h1>
           <div class="prose hero-bio">
             <p>
@@ -71,7 +71,7 @@ const [jibX, jibY] = sails.jib[0];
       </section>
 
       <section id="projects" class="col section">
-        <div class="section-head"><h2>Projects</h2><p class="section-count">{projects.length} projects</p></div>
+        <div class="section-head"><h2 class="veil">Projects</h2><p class="section-count veil">{projects.length} projects</p></div>
         <ul class="cards cards-featured">
           {featured.map((p) => <li><ProjectCard project={p} featured /></li>)}
         </ul>
@@ -99,7 +99,7 @@ const [jibX, jibY] = sails.jib[0];
       </div>
 
       <section id="classes" class="col section">
-        <div class="section-head"><h2>Classes</h2><p class="section-count">{units} units</p></div>
+        <div class="section-head"><h2 class="veil">Classes</h2><p class="section-count veil">{units} units</p></div>
         <ClassesChart />
       </section>
     </main>
@@ -329,6 +329,10 @@ const [jibX, jibY] = sails.jib[0];
     .cards-rest { margin-top: 48px; }
     .sails-wrap { padding-top: 112px; }
     .home :global(.home-footer) { margin-top: 112px; }
+  }
+  /* Below 360 px the note beside the small circle runs off the right edge. */
+  @media (max-width: 359px) {
+    .scan-note { display: none; }
   }
 </style>
 

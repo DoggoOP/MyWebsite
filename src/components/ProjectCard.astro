@@ -16,11 +16,13 @@ const year = p.data.date ? new Date(`${p.data.date}T00:00:00`).getFullYear() : n
       ? <img src={p.data.coverImage} alt="" loading="lazy" decoding="async" style={p.data.coverPosition && `object-position: ${p.data.coverPosition}`} />
       : <canvas data-animation={p.data.animation} aria-hidden="true"></canvas>}
   </div>
-  <div class="meta">
-    <h3 class="title">{p.data.title}</h3>
-    {year && <span class="year">{year}</span>}
+  <div class="caption veil">
+    <div class="meta">
+      <h3 class="title">{p.data.title}</h3>
+      {year && <span class="year">{year}</span>}
+    </div>
+    <p class="tagline">{p.data.tagline}</p>
   </div>
-  <p class="tagline">{p.data.tagline}</p>
 </a>
 
 <style>
@@ -46,12 +48,12 @@ const year = p.data.date ? new Date(`${p.data.date}T00:00:00`).getFullYear() : n
   .thumb-diagram img, .thumb-render img { object-fit: contain; padding: 16px; }
   .card:hover .thumb { outline-color: var(--ink); }
 
+  .caption { margin-top: 14px; }
   .meta {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
-    margin-top: 14px;
   }
   .title {
     font-size: 17px;
