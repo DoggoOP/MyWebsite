@@ -3,47 +3,22 @@ import type { Grid } from './grid';
 
 // Mask layout: Uint8Array of cols*rows, index row*cols + col, row 0 at the page top, 1 = solid.
 
-let scratchKey = '';
-let hits = new Uint16Array(0);
-let grown = new Uint8Array(0);
+/** A circle in page CSS px. */
+export type Disc = { cx: number; cy: number; r: number };
 
-function scratchFor(g: Grid) {
-  const key = `${g.cols}x${g.rows}`;
-  if (key !== scratchKey) {
-    scratchKey = key;
-    hits = new Uint16Array(g.cols * g.rows);
-    grown = new Uint8Array(g.cols * g.rows);
-  } else {
-    hits.fill(0);
-    grown.fill(0);
-  }
-}
-
-/**
- * Rasterize projected scan points (page-space x,y pairs) into a silhouette.
- * A cell needs 2+ hits, then the result is dilated by 1 and eroded by 1 (3x3), as the old
- * `updateObstacles` did. The silhouette is ORed into `out`, so the caller can combine scan and sails.
- */
-export function rasterizeScan(points: Float32Array, g: Grid, out: Uint8Array): void {
-  const { cols: w, rows: h, cell } = g;
-  scratchFor(g);
-  for (let i = 0; i + 1 < points.length; i += 2) {
-    const gx = Math.floor(points[i] / cell);
-    const gy = Math.floor(points[i + 1] / cell);
-    if (gx < 1 || gx >= w - 1 || gy < 1 || gy >= h - 1) continue;
-    hits[gy * w + gx]++;
-  }
-  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
-    const i = y * w + x;
-    if (hits[i] >= 2) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++)
-      grown[i + dy * w + dx] = 1;
-  }
-  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
-    const i = y * w + x;
-    let full = true;
-    for (let dy = -1; dy <= 1 && full; dy++) for (let dx = -1; dx <= 1; dx++)
-      if (!grown[i + dy * w + dx]) { full = false; break; }
-    if (full) out[i] = 1;
+/** Mark every cell whose centre lies inside the disc. ORs into `out`. */
+export function rasterizeDisc(d: Disc, g: Grid, out: Uint8Array): void {
+  const { cols, rows, cell } = g;
+  if (!(d.r > 0)) return;
+  const r2 = d.r * d.r;
+  const r0 = Math.max(0, Math.floor((d.cy - d.r) / cell)), r1 = Math.min(rows - 1, Math.floor((d.cy + d.r) / cell));
+  const c0 = Math.max(0, Math.floor((d.cx - d.r) / cell)), c1 = Math.min(cols - 1, Math.floor((d.cx + d.r) / cell));
+  for (let row = r0; row <= r1; row++) {
+    const dy = (row + 0.5) * cell - d.cy;
+    for (let col = c0; col <= c1; col++) {
+      const dx = (col + 0.5) * cell - d.cx;
+      if (dx * dx + dy * dy <= r2) out[row * cols + col] = 1;
+    }
   }
 }
 

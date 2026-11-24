@@ -1,6 +1,6 @@
 import type { Pt } from '../../lib/sails';
 import type { Grid } from './grid';
-import { rasterizePolyline, rasterizeScan } from './mask';
+import { rasterizeDisc, rasterizePolyline, type Disc } from './mask';
 
 /** A drag that starts on one of these never stirs the air. */
 export const NO_STIR = 'a, button, input, select, textarea, label, [data-scan]';
@@ -55,13 +55,13 @@ export function readRef(search: string, dev: boolean): number {
 }
 
 /**
- * Solid mask from sail polylines (page px) and scan points (page-space x,y pairs).
+ * Solid mask from sail polylines and the scan circle, both in page px.
  * Clears and fills `out` when the caller passes a buffer of the right size.
  */
-export function buildMask(g: Grid, sails: Pt[][], scan: Float32Array | null, out?: Uint8Array): Uint8Array {
+export function buildMask(g: Grid, sails: Pt[][], disc: Disc | null, out?: Uint8Array): Uint8Array {
   const n = g.cols * g.rows;
   const mask = out && out.length === n ? out.fill(0) : new Uint8Array(n);
   for (const line of sails) if (line.length) rasterizePolyline(line, g, SAIL_CELLS, mask);
-  if (scan && scan.length) rasterizeScan(scan, g, mask);
+  if (disc) rasterizeDisc(disc, g, mask);
   return mask;
 }

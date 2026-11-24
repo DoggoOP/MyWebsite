@@ -138,20 +138,21 @@ test('astro:before-swap stops everything', () => {
   expect(solvers[0].disposed).toBe(true);
 });
 
-test('a scan silhouette merges into the mask', () => {
+function placeScan(el: HTMLElement, left: number, top: number, size: number) {
+  el.getBoundingClientRect = () => ({ left, top, width: size, height: size, right: left + size, bottom: top + size, x: left, y: top, toJSON() {} });
+}
+
+test('the circle inscribed in the scan box is a solid in the start mask, with a seeded wake', () => {
   const opts = setup();
+  placeScan(opts.scan.element, 400, 200, 60); // centre (430, 230), radius 30
   const stop = startPageWind(opts);
   const s = solvers[0];
-  const pts: number[] = [];
-  for (let y = 200; y < 260; y++) for (let x = 400; x < 460; x++) pts.push(x, y);
-  opts.scan.element.dispatchEvent(new CustomEvent('scan-silhouette', { detail: new Float32Array(pts) }));
-  const mask = s.masks.at(-1)!;
-  expect(mask[46 * s.cols + 86]).toBe(1); // (430, 230) px at 5 px cells
-  expect(s.calls.filter((c) => c === 'seedWake').length).toBeGreaterThan(0);
+  const mask = s.masks[0];
+  expect(mask[46 * s.cols + 86]).toBe(1); // the centre at 5 px cells
+  expect(mask[46 * s.cols + 91]).toBe(1); // 27.5 px right of the centre
+  expect(mask[40 * s.cols + 80]).toBe(0); // the box corner lies outside the circle
+  expect(s.calls.filter((c) => c === 'seedWake').length).toBe(1);
   stop();
-  const count = s.masks.length;
-  opts.scan.element.dispatchEvent(new CustomEvent('scan-silhouette', { detail: new Float32Array(pts) }));
-  expect(s.masks.length).toBe(count);
 });
 
 function pointer(type: string, target: Element, init: { pointerType: string; x: number; y: number; buttons?: number }) {
@@ -167,59 +168,24 @@ function drag(target: Element, pointerType: string) {
   pointer('pointerup', target, { pointerType, x: 118, y: 100 });
 }
 
-test('the wind asks the scan for a silhouette at start and after each relayout', () => {
+test('a relayout that moves the scan circle masks it where it sits now', () => {
   const opts = setup();
-  let asks = 0;
-  opts.scan.element.addEventListener('scan-silhouette-request', () => { asks++; });
+  placeScan(opts.scan.element, 400, 200, 60);
   const stop = startPageWind(opts);
-  expect(asks).toBe(1);
-  window.dispatchEvent(new Event('resize'));
-  flush();
-  expect(asks).toBe(2);
-  stop();
-  window.dispatchEvent(new Event('resize'));
-  flush();
-  expect(asks).toBe(2);
-});
-
-test('a relayout that rebuilds the lattice masks the scan where the circle sits now', () => {
-  const opts = setup();
-  let top = 200;
-  opts.scan.element.addEventListener('scan-silhouette-request', () => {
-    const pts: number[] = [];
-    for (let y = top; y < top + 60; y++) for (let x = 400; x < 460; x++) pts.push(x, y);
-    opts.scan.element.dispatchEvent(new CustomEvent('scan-silhouette', { detail: new Float32Array(pts) }));
-  });
-  const stop = startPageWind(opts);
-  top = 400;
-  vi.stubGlobal('innerHeight', innerHeight + 300); // a taller page: a new lattice
-  window.dispatchEvent(new Event('resize'));
-  flush();
-  const s = solvers.at(-1)!;
-  expect(solvers.length).toBe(2);
-  expect(s.masks[0][86 * s.cols + 86]).toBe(1); // (430, 430) px, the circle's new spot
-  expect(s.masks[0][46 * s.cols + 86]).toBe(0); // (430, 230) px, the old spot
-  stop();
-});
-
-test('a host around a late-mounted scan hears the silhouette and forwards requests', () => {
-  const opts = setup();
-  const host = document.createElement('div');
-  document.body.append(host);
-  const stop = startPageWind({ ...opts, scan: { element: host } });
-  const scanEl = document.createElement('div');
-  scanEl.setAttribute('data-scan', '');
-  host.append(scanEl);
-  let asks = 0;
-  scanEl.addEventListener('scan-silhouette-request', () => { asks++; });
-  const pts: number[] = [];
-  for (let y = 200; y < 260; y++) for (let x = 400; x < 460; x++) pts.push(x, y);
-  scanEl.dispatchEvent(new CustomEvent('scan-silhouette', { detail: new Float32Array(pts) }));
   const s = solvers[0];
-  expect(s.masks.at(-1)![46 * s.cols + 86]).toBe(1);
+  placeScan(opts.scan.element, 400, 400, 60);
   window.dispatchEvent(new Event('resize'));
   flush();
-  expect(asks).toBe(1);
+  expect(solvers.length).toBe(1); // same page size: the lattice stays, only the mask changes
+  const mask = s.masks.at(-1)!;
+  expect(mask[86 * s.cols + 86]).toBe(1); // (430, 430) px, the new spot
+  expect(mask[46 * s.cols + 86]).toBe(0); // (430, 230) px, the old spot
+  stop();
+});
+
+test('an unmeasured scan box adds no circle', () => {
+  const stop = startPageWind(setup());
+  expect(solvers[0].masks[0].every((v) => v === 0)).toBe(true);
   stop();
 });
 
@@ -252,15 +218,14 @@ test('a move with no buttons down ends a drag whose release the page missed', ()
   stop();
 });
 
-test('reduced motion runs 200 steps, draws once and waits on Play', () => {
+test('reduced motion still runs the air; Pause is the way to stop it', () => {
   media['(prefers-reduced-motion: reduce)'] = true;
   const opts = setup();
   const stop = startPageWind(opts);
-  expect(solvers[0].steps).toBe(200);
-  expect(activeLoops()).toBe(0);
-  expect(opts.pauseButton.textContent).toBe('Play air');
+  expect(activeLoops()).toBe(1);
+  expect(opts.pauseButton.textContent).toBe('Pause air');
   flush(2);
-  expect(solvers[0].steps).toBe(200);
+  expect(solvers[0].steps).toBe(12);
   stop();
 });
 
@@ -280,7 +245,7 @@ function withGl(state = { lost: false }) {
 test('the GL context asks for a low-power GPU and refuses a software one', () => {
   withGl();
   const stop = startPageWind(setup());
-  const attrs = vi.mocked(HTMLCanvasElement.prototype.getContext).mock.calls[0][1] as WebGLContextAttributes;
+  const attrs = (vi.mocked(HTMLCanvasElement.prototype.getContext).mock.calls[0] as unknown[])[1] as WebGLContextAttributes;
   expect(attrs).toMatchObject({
     failIfMajorPerformanceCaveat: true, powerPreference: 'low-power',
     premultipliedAlpha: false, alpha: true, antialias: false,
@@ -389,20 +354,6 @@ test('a lost context stops the loop; a restored one rebuilds from the start stat
   opts.canvas.dispatchEvent(new Event('webglcontextrestored'));
   expect(solvers.length).toBe(2);
   expect(activeLoops()).toBe(0);
-});
-
-test('under reduced motion the first scan silhouette steps the frozen field once', () => {
-  media['(prefers-reduced-motion: reduce)'] = true;
-  const opts = setup();
-  const stop = startPageWind(opts);
-  const pts: number[] = [];
-  for (let y = 200; y < 260; y++) for (let x = 400; x < 460; x++) pts.push(x, y);
-  const send = () => opts.scan.element.dispatchEvent(new CustomEvent('scan-silhouette', { detail: new Float32Array(pts) }));
-  send();
-  expect(solvers[0].steps).toBe(400);
-  send();
-  expect(solvers[0].steps).toBe(400);
-  stop();
 });
 
 test('webgl2 without float targets paints with Canvas2D on a fresh canvas', () => {

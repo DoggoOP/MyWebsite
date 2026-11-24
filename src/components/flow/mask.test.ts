@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { rasterizePolyline, rasterizeScan, solidCentroids } from './mask';
+import { rasterizeDisc, rasterizePolyline, solidCentroids } from './mask';
 
 test('a sail polyline becomes a connected solid stroke', () => {
   const g = { cell: 5, cols: 100, rows: 100 }, m = new Uint8Array(10_000);
@@ -7,20 +7,26 @@ test('a sail polyline becomes a connected solid stroke', () => {
   for (let i = 12; i < 78; i++) expect(m[i * 100 + i]).toBe(1);
 });
 
-test('a single stray scan point does not become solid', () => {
-  const g = { cell: 5, cols: 20, rows: 20 }, m = new Uint8Array(400);
-  rasterizeScan(new Float32Array([52, 52]), g, m);
-  expect(m.some(x => x === 1)).toBe(false);
-});
-
-test('a dense blob of scan points becomes solid and ORs into out', () => {
+test('a disc fills the cells whose centres lie inside and ORs into out', () => {
   const g = { cell: 5, cols: 20, rows: 20 }, m = new Uint8Array(400);
   m[0] = 1;
-  const pts: number[] = [];
-  for (let y = 30; y < 70; y += 2) for (let x = 30; x < 70; x += 2) pts.push(x, y);
-  rasterizeScan(new Float32Array(pts), g, m);
-  expect(m[10 * 20 + 10]).toBe(1);
+  rasterizeDisc({ cx: 50, cy: 50, r: 20 }, g, m);
+  expect(m[10 * 20 + 10]).toBe(1); // centre
+  expect(m[10 * 20 + 13]).toBe(1); // 17.5 px from centre
+  expect(m[10 * 20 + 14]).toBe(0); // 22.5 px from centre
   expect(m[0]).toBe(1);
+  const c = solidCentroids(m.fill(0, 0, 1), g);
+  expect(c).toHaveLength(1);
+  expect(c[0].radius).toBeCloseTo(4, 0);
+});
+
+test('a disc past the grid edge is clipped, and r <= 0 marks nothing', () => {
+  const g = { cell: 5, cols: 20, rows: 20 }, m = new Uint8Array(400);
+  rasterizeDisc({ cx: 0, cy: 0, r: 30 }, g, m);
+  expect(m[0]).toBe(1);
+  const empty = new Uint8Array(400);
+  rasterizeDisc({ cx: 50, cy: 50, r: 0 }, g, empty);
+  expect(empty.some((v) => v === 1)).toBe(false);
 });
 
 test('solidCentroids finds components and drops tiny ones', () => {

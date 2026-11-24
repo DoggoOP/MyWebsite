@@ -86,7 +86,7 @@ async function fetchAsset(url: string, signal: AbortSignal, onProgress: (loaded:
 
 /** Circle framing: target offset as fractions of the scan box (x, y, drop below the top in z) and camera distance in max-dimension units. */
 const CIRCLE_AIM: [number, number, number] = [0, 0, 0.32];
-const CIRCLE_DISTANCE = 0.9;
+const CIRCLE_DISTANCE = 1.3;
 
 export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfels.bin', className, filter = true, circle = false, intro = true }: PointCloudViewerProps) {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -99,9 +99,7 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
   useEffect(() => {
     if (!mountRef.current) return;
     const container = mountRef.current;
-    const wrapper = wrapperRef.current;
     const s = stateRef.current;
-    let modelPositions: Float32Array | null = null;
     let sortSurfels: (() => void) | null = null;
     let lastSort = 0;
     const lastSortedPos = new THREE.Vector3();
@@ -161,40 +159,6 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
       if (t >= 2.6) introActive = false;
     };
 
-    // Silhouette: every 4th surfel projected to page space for the page wind solver.
-    const projected = new THREE.Vector3();
-    const lastEmitPos = new THREE.Vector3();
-    const lastEmitQuat = new THREE.Quaternion();
-    let lastEmit = 0;
-    const emitSilhouette = () => {
-      if (!circle || !wrapper || !modelPositions) return;
-      camera.updateMatrixWorld();
-      const rect = container.getBoundingClientRect();
-      const r = Math.min(rect.width, rect.height) / 2;
-      const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-      const count = Math.ceil(modelPositions.length / 12);
-      const out = new Float32Array(count * 2);
-      let n = 0;
-      for (let i = 0; i < modelPositions.length; i += 12) {
-        projected.set(modelPositions[i], modelPositions[i + 1], modelPositions[i + 2]).project(camera);
-        if (projected.z > 1) continue;
-        const x = rect.left + (projected.x * 0.5 + 0.5) * rect.width;
-        const y = rect.top + (0.5 - projected.y * 0.5) * rect.height;
-        if ((x - cx) ** 2 + (y - cy) ** 2 > r * r) continue; // the circle crops the body; so does the solid
-        out[n++] = x + window.scrollX;
-        out[n++] = y + window.scrollY;
-      }
-      wrapper.dispatchEvent(new CustomEvent('scan-silhouette', { detail: out.slice(0, n) }));
-      lastEmit = performance.now();
-      lastEmitPos.copy(camera.position);
-      lastEmitQuat.copy(camera.quaternion);
-    };
-
-    // The page wind may attach after the model-ready emit, and layout shifts move the circle
-    // without a camera change, so the wind asks again and the viewer answers with a fresh emit.
-    const onSilhouetteRequest = () => { if (modelReady) emitSilhouette(); };
-    wrapper?.addEventListener('scan-silhouette-request', onSilhouetteRequest);
-
     // Off screen the scan costs nothing: no controls update, no render, until the scan scrolls back.
     let inView = true;
     const animate = () => {
@@ -202,11 +166,6 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
       s.animId = requestAnimationFrame(animate);
       if (introActive) { stepIntro(performance.now()); needsRender = true; }
       controls.update();
-      if (circle && modelReady && performance.now() - lastEmit > 120 &&
-          (camera.position.distanceToSquared(lastEmitPos) > 1e-6 ||
-            camera.quaternion.angleTo(lastEmitQuat) > 1e-4)) {
-        emitSilhouette();
-      }
       if (sortSurfels && performance.now() - lastSort > 120 &&
           (camera.position.distanceToSquared(lastSortedPos) > 0.0001 ||
             camera.quaternion.angleTo(lastSortedQuat) > 0.01)) {
@@ -237,7 +196,6 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
       renderer.setSize(container.clientWidth, container.clientHeight);
       controls.handleResize();
       needsRender = true;
-      // No silhouette here: the page wind requests one after every relayout.
     };
     window.addEventListener('resize', onResize);
 
@@ -312,7 +270,6 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
           finalPositions = data.positions;
           finalColors    = data.colors;
         }
-        modelPositions = finalPositions;
 
         const count = finalPositions.length / 3;
         const axisA = new Float32Array(count * 3);
@@ -499,7 +456,6 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
 
         modelReady = true;
         needsRender = true;
-        emitSilhouette();
         if (circle && intro && !reducedMotion) {
           introStart = performance.now();
           introAngle = 0;
@@ -519,7 +475,6 @@ export default function PointCloudViewer({ src, axesSrc = '/assets/3dImage-surfe
       loadAbort.abort();
       io?.disconnect();
       window.removeEventListener('resize', onResize);
-      wrapper?.removeEventListener('scan-silhouette-request', onSilhouetteRequest);
       renderer.domElement.removeEventListener('pointerdown', cancelIntro);
       if (s.animId !== undefined) cancelAnimationFrame(s.animId);
       s.animId = undefined;

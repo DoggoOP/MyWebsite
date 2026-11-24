@@ -5,7 +5,7 @@ import { createCpuPainter } from './cpuRender';
 import { GpuLbm, type RenderOpts } from './gpuLbm';
 import { gridSize, toCell, type Grid } from './grid';
 import { CpuLbm } from './lbmCpu';
-import { solidCentroids } from './mask';
+import { solidCentroids, type Disc } from './mask';
 import {
   DRAG_RADIUS, buildMask, canStir, dragForce, readRef, sailsToPage, viewWindow,
 } from './pageWindParts';
@@ -29,11 +29,7 @@ export type PageWindOptions = {
   root: HTMLElement;
   sailsSvg: SVGSVGElement | null;
   pauseButton: HTMLButtonElement | null;
-  /**
-   * The scan wrapper, or a static host around a scan that mounts later. The viewer dispatches a
-   * non-bubbling `scan-silhouette` (detail: page-space x,y pairs) on its `[data-scan]` wrapper; a
-   * capture listener on the host hears that too.
-   */
+  /** The square around the scan; the inscribed circle is a solid the air flows around. */
   scan: { element: HTMLElement } | null;
   /** Tests only: replaces CpuLbm / GpuLbm construction. */
   createSolver?: (backend: Backend, cols: number, rows: number) => SolverLike;
@@ -65,7 +61,7 @@ export function activeLoops(): number {
 
 /**
  * Runs the page-wide wind tunnel behind the content: a lattice sized to the whole page, solids
- * from the sails and the scan silhouette, banded vorticity drawn for the rows in view on a fixed
+ * from the sails and the scan circle, banded vorticity drawn for the rows in view on a fixed
  * canvas. Returns the cleanup, which is idempotent.
  */
 export function startPageWind(opts: PageWindOptions): () => void {
@@ -78,7 +74,6 @@ export function startPageWind(opts: PageWindOptions): () => void {
   const media = (q: string) => (typeof matchMedia === 'function' ? matchMedia(q) : null);
   const darkMq = media('(prefers-color-scheme: dark)');
   const coarseMq = media('(pointer: coarse)');
-  const reduced = !!media('(prefers-reduced-motion: reduce)')?.matches;
   const phone = () => !!coarseMq?.matches || innerWidth < 768;
   const themeLut = () => buildLut(darkMq?.matches ? 'dark' : 'light');
   let lut = themeLut();
@@ -90,11 +85,11 @@ export function startPageWind(opts: PageWindOptions): () => void {
   let painter: ReturnType<typeof createCpuPainter> = null;
   let grid: Grid = { cell: 5, cols: 1, rows: 1 };
   let sailLines: Pt[][] = [];
-  let sailsKey = '';
-  let scanPts: Float32Array | null = null;
-  let scanSeeded = false;
+  let disc: Disc | null = null;
+  let solidsKey = '';
   let maskBuf: Uint8Array = new Uint8Array(0);
-  let paused = reduced;
+  // The air is the page's main motion and drifts slowly, so it runs under reduced motion too; Pause stops it.
+  let paused = false;
   let stopped = false;
   let lost = false;
   let raf = 0, layoutRaf = 0, drawRaf = 0;
@@ -113,16 +108,23 @@ export function startPageWind(opts: PageWindOptions): () => void {
     return gridSize(w, h, { phone: phone(), maxTexture: gl ? (gl.getParameter(gl.MAX_TEXTURE_SIZE) as number) : CPU_MAX_TEXTURE });
   }
 
-  function measureSails() {
-    if (!sailsSvg) return;
-    const { main, jib } = sailPolylines();
-    sailLines = sailsToPage(sailsSvg.getBoundingClientRect(), scrollX, scrollY, SAIL_VIEWBOX, [main, jib]);
-    sailsKey = sailLines.map((l) => (l.length ? `${l[0]},${l[l.length - 1]}` : '')).join('|');
+  /** Sails and the scan circle in page px, and a key that changes when either moves. */
+  function measureSolids() {
+    if (sailsSvg) {
+      const { main, jib } = sailPolylines();
+      sailLines = sailsToPage(sailsSvg.getBoundingClientRect(), scrollX, scrollY, SAIL_VIEWBOX, [main, jib]);
+    }
+    const box = scan?.element.getBoundingClientRect();
+    disc = box && box.width > 0 && box.height > 0
+      ? { cx: box.left + scrollX + box.width / 2, cy: box.top + scrollY + box.height / 2, r: Math.min(box.width, box.height) / 2 }
+      : null;
+    solidsKey = sailLines.map((l) => (l.length ? `${l[0]},${l[l.length - 1]}` : '')).join('|')
+      + (disc ? `|${disc.cx},${disc.cy},${disc.r}` : '');
   }
 
-  /** Sails + scan for the current grid, in a buffer reused between rebuilds. */
+  /** Sails + scan circle for the current grid, in a buffer reused between rebuilds. */
   function mask() {
-    maskBuf = buildMask(grid, sailLines, scanPts, maskBuf);
+    maskBuf = buildMask(grid, sailLines, disc, maskBuf);
     return maskBuf;
   }
 
@@ -164,7 +166,6 @@ export function startPageWind(opts: PageWindOptions): () => void {
     const solids = mask();
     solver.setMask(solids);
     for (const c of solidCentroids(solids, grid)) solver.seedWake(c.col, c.row, Math.max(2, c.radius));
-    scanSeeded = !!scanPts;
     if (paused) solver.step(FROZEN_STEPS); // a frozen field still shows the start wakes
   }
 
@@ -254,24 +255,14 @@ export function startPageWind(opts: PageWindOptions): () => void {
     });
   }
 
-  /** The viewer answers with a fresh `scan-silhouette`; layout shifts move the circle without a camera change. */
-  function requestScan() {
-    if (!scan) return;
-    const target = scan.element.querySelector('[data-scan]') ?? scan.element;
-    target.dispatchEvent(new CustomEvent('scan-silhouette-request'));
-  }
-
   function relayout() {
     const g = sizeGrid();
-    const oldKey = sailsKey;
-    measureSails();
-    // Ask first, so a rebuild masks and seeds the scan where the circle sits now, not where the
-    // circle sat before the layout moved.
-    requestScan();
+    const oldKey = solidsKey;
+    measureSolids();
     if (!solver || g.cols !== grid.cols || g.rows !== grid.rows || g.cell !== grid.cell) {
       if (!lost) build();
       syncLoop();
-    } else if (sailsKey !== oldKey) {
+    } else if (solidsKey !== oldKey) {
       solver.setMask(mask());
     }
     scheduleDraw();
@@ -293,20 +284,6 @@ export function startPageWind(opts: PageWindOptions): () => void {
   function onVisibility() { syncLoop(); scheduleDraw(); }
   function onTheme() { lut = themeLut(); scheduleDraw(); }
   function onScroll() { scheduleDraw(); }
-
-  function onScan(e: Event) {
-    const pts = (e as CustomEvent).detail;
-    if (!(pts instanceof Float32Array)) return;
-    scanPts = pts;
-    if (!solver || lost) return;
-    solver.setMask(mask());
-    if (!scanSeeded) {
-      scanSeeded = true;
-      for (const c of solidCentroids(buildMask(grid, [], scanPts), grid)) solver.seedWake(c.col, c.row, Math.max(2, c.radius));
-      if (paused) solver.step(FROZEN_STEPS); // the frozen field shows the scan wake too
-    }
-    scheduleDraw();
-  }
 
   function onPointerDown(e: PointerEvent) {
     if (!canStir(e.pointerType, e.target) || (e.pointerType === 'mouse' && e.button !== 0)) return;
@@ -356,10 +333,8 @@ export function startPageWind(opts: PageWindOptions): () => void {
     [document, 'astro:before-swap', cleanup],
   ];
   if (pauseButton) listeners.push([pauseButton, 'click', onPause]);
-  if (scan) listeners.push([scan.element, 'scan-silhouette', onScan, { capture: true }]);
   if (darkMq) listeners.push([darkMq, 'change', onTheme]);
   for (const [t, type, fn, o] of listeners) t.addEventListener(type, fn, o);
-  requestScan(); // the viewer may have sent the model-ready silhouette before this listener existed
   if (backend === 'cpu') useCpu(); // a webgl2 canvas without float targets can't also paint 2D
   if (gl) {
     canvas.addEventListener('webglcontextlost', onLost);
@@ -371,7 +346,7 @@ export function startPageWind(opts: PageWindOptions): () => void {
   };
   if (dev) window.__wind = devHandle;
 
-  measureSails();
+  measureSolids();
   build();
   updateButton();
   ro?.observe(root);

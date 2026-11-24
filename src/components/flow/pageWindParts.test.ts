@@ -57,13 +57,11 @@ test('windref overrides the colour scale only in dev', () => {
   expect(readRef('?windref=-1', true)).toBe(readRef('', true));
 });
 
-test('the mask ORs sails and scan', () => {
+test('the mask ORs sails and the scan circle', () => {
   const g = { cell: 5, cols: 40, rows: 40 };
-  const pts: number[] = [];
-  for (let y = 120; y < 160; y += 1) for (let x = 120; x < 160; x += 1) pts.push(x, y);
-  const mask = buildMask(g, [[[10, 10], [60, 10]]], new Float32Array(pts));
+  const mask = buildMask(g, [[[10, 10], [60, 10]]], { cx: 140, cy: 140, r: 20 });
   expect(mask[2 * 40 + 5]).toBe(1); // sail at y = 10 px -> row 2
-  expect(mask[28 * 40 + 28]).toBe(1); // scan blob centre at 140 px -> cell 28
+  expect(mask[28 * 40 + 28]).toBe(1); // circle centre at 140 px -> cell 28
   expect(mask[35 * 40 + 5]).toBe(0);
   expect(buildMask(g, [], null).every((v) => v === 0)).toBe(true);
 });
